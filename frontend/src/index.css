@@ -1,0 +1,98 @@
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color-scheme: dark;
+  color: #e5edf7;
+  background: #0f1728;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --page: #0f1728;
+  --surface: #1e293b;
+  --surface-soft: #172235;
+  --text: #e5edf7;
+  --muted: #a5b4c7;
+  --border: #304057;
+
+  --green: #5ee4b5;
+  --green-soft: #103d35;
+  --amber: #fbd36c;
+  --amber-soft: #44351a;
+  --red: #ff9aaa;
+  --red-soft: #40232e;
+  --blue: #a6ceff;
+  --blue-soft: #213853;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--page);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+select option {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+::selection {
+  background: #256c56;
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #506780 #15202d;
+}
