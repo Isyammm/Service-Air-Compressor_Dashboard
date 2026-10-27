@@ -703,10 +703,7 @@ function App() {
           )}
 
           {activeMenu === menus[2] && (
-            <ProcessTrends
-              demoMode={demoMode}
-              history={history}
-            />
+            <ProcessTrends demoMode={demoMode} />
           )}
 
           {activeMenu === menus[3] && (
