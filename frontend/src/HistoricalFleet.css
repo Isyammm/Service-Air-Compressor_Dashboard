@@ -1,0 +1,162 @@
+/* CSS tambahan. Tetap gunakan App.css yang sudah ada. */
+
+.history-select,
+.history-controls input {
+  color-scheme: dark;
+  background: #111e30;
+  color: #e5eef8;
+  border: 1px solid #496079;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  min-height: 40px;
+}
+
+.history-select:focus-visible,
+.history-controls input:focus-visible {
+  outline: 2px solid #36cba7;
+  outline-offset: 3px;
+}
+
+.history-controls {
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  background: #152235;
+  border: 1px solid #34465e;
+  border-radius: 10px;
+  color: #c5d4e6;
+}
+
+.history-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.history-toolbar label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.history-toolbar > span {
+  padding-bottom: 10px;
+  font-size: 13px;
+}
+
+.history-help {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #b0c1d6;
+}
+
+.history-error {
+  color: #ffbdc4;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.history-controls details {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.history-controls summary {
+  cursor: pointer;
+}
+
+.history-controls button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.fleet-history-note {
+  margin-top: 12px;
+  color: #b6c9df;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.status-dot.history-dot {
+  background: #60a5fa;
+  box-shadow: 0 0 8px rgb(96 165 250 / 30%);
+}
+
+.status-dot.demo-dot {
+  background: #fbbf24;
+}
+
+/* Historical: status belum diketahui, bukan Isolate. */
+.compressor-card.compressor-unknown {
+  background: #182437;
+  border-color: #52657c;
+  color: #edf3fc;
+}
+
+.compressor-card.compressor-unknown:hover {
+  background: #213148;
+  border-color: #9aacbf;
+}
+
+.compressor-unknown .val-box {
+  background: #111c2c;
+  border-color: #35485e;
+}
+
+.compressor-unknown .val-label,
+.compressor-unknown .val-unit,
+.compressor-unknown .acquisition-label {
+  color: #bdcee2;
+}
+
+.compressor-unknown .val-number,
+.compressor-unknown .compressor-name {
+  color: #f0f5fc;
+}
+
+.compressor-unknown .compressor-type-badge,
+.compressor-unknown .card-footer-action {
+  color: #c5d5e8;
+}
+
+.compressor-unknown .acquisition-label {
+  overflow-wrap: anywhere;
+}
+
+.equipment-status.status-unknown {
+  background: #33445b;
+  color: #edf3fc;
+  border-color: #61758e;
+}
+
+.status-unknown .equipment-dot,
+.unit-strip-unknown .unit-strip-dot {
+  background: #a7b7ca;
+}
+
+.unit-strip-btn.unit-strip-unknown {
+  border-color: #52657c;
+  color: #d1deed;
+}
+
+.unit-strip-btn.unit-strip-unknown.is-active {
+  background: #273d56;
+  border-color: #60a5fa;
+}
+
+.unit-information dd {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .history-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-select {
+    max-width: 100%;
+  }
+}

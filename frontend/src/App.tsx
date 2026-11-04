@@ -2,39 +2,121 @@ import { useEffect, useState } from 'react'
 import ProcessTrends from './ProcessTrends'
 import AlarmsEvents from './AlarmsEvents'
 import { useDemoData } from './useDemoData'
+import { useHistoricalFleet } from './useHistoricalFleet'
 import type {
-  CompressorStatus,
-  TrendSample,
-} from './useDemoData'
+  FleetStatus,
+  FleetUnit,
+} from './useHistoricalFleet'
 import valeLogo from './assets/vale-logo.png'
 import './App.css'
+import './HistoricalFleet.css'
+
+
+type DataMode = 'demo' | 'historical' | 'live'
 
 const menus = [
-  'Fleet & plant overview',
-  'Unit telemetry',
+  'Service Air Compressor Overview',
+  'Unit Compressor',
   'Process & trends',
   'Alarms & events',
 ]
 
-const statusDescriptions: Record<CompressorStatus, string> = {
-  Loaded:
-    'Contoh kondisi Loaded. Nilai diperbarui oleh simulator frontend setiap sekitar dua detik.',
-  Unloaded:
-    'Contoh kondisi Unloaded. Status ini tidak otomatis menunjukkan alarm kerusakan.',
-  Trip:
-    'Contoh kondisi Trip. Penyebab aktual harus diperoleh dari sistem proteksi perangkat.',
-  Unknown:
-    'Akuisisi tidak aktif. Kondisi mesin tidak dapat disimpulkan dan parameter ditampilkan sebagai —.',
-}
+const statuses = [
+  'Running',
+  'Standby',
+  'Isolate',
+  'Trip',
+] as const
 
-function formatReading(value: number | null, decimals = 1) {
-  return value === null ? '—' : value.toFixed(decimals)
+const sensorDefinitions = [
+  {
+    field: 'airTempStg1',
+    title: 'Air Temperature Stage 1',
+    suffix: 'AIR-TEMP-STG1-AI-MS',
+    unit: '°C',
+    category: 'temperature',
+  },
+  {
+    field: 'airTempStg2',
+    title: 'Air Temperature Stage 2',
+    suffix: 'AIR-TEMP-STG2-AI-MS',
+    unit: '°C',
+    category: 'temperature',
+  },
+  {
+    field: 'pressureStg1',
+    title: 'Discharge Pressure Stage 1',
+    suffix: 'DSCH-PRESSURE-STG1-AI-MS',
+    unit: 'psi',
+    category: 'pressure',
+  },
+  {
+    field: 'pressureStg2',
+    title: 'Discharge Pressure Stage 2',
+    suffix: 'DSCH-PRESSURE-STG2-AI-MS',
+    unit: 'psi',
+    category: 'pressure',
+  },
+  {
+    field: 'bearingDeTemp',
+    title: 'Bearing DE Temperature',
+    suffix: 'BRG-DE-TEMP-AI-MS',
+    unit: '°C',
+    category: 'mechanical',
+  },
+  {
+    field: 'bearingNdeTemp',
+    title: 'Bearing NDE Temperature',
+    suffix: 'BRG-NDE-TEMP-AI-MS',
+    unit: '°C',
+    category: 'mechanical',
+  },
+      {
+        field: 'ctInput',
+        title: 'CT Input',
+        suffix: 'CT-INPUT-AI-MS',
+        unit: 'A',
+        category: 'electrical',
+      },
+    ] as const
+
+const cardParameters = [
+  {
+    field: 'airTempStg1',
+    title: 'AIR TEMP 1',
+    unit: '°C',
+  },
+  {
+    field: 'pressureStg2',
+    title: 'PRESS STG 2',
+    unit: 'psi',
+  },
+  {
+    field: 'ctInput',
+    title: 'CT INPUT',
+    unit: 'A',
+  },
+] as const
+
+function formatReading(
+  value: number | null | undefined,
+  decimals = 2,
+) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value.toLocaleString('en-US', {
+        maximumFractionDigits: decimals,
+      })
+    : '—'
 }
 
 function formatTime(timestamp: number) {
   return new Date(timestamp).toLocaleTimeString('en-GB', {
     timeZone: 'Asia/Makassar',
   })
+}
+
+function statusLabel(status: FleetStatus) {
+  return status === 'Unknown' ? 'Belum diketahui' : status
 }
 
 function NavIcon({ index }: { index: number }) {
@@ -61,136 +143,190 @@ function NavIcon({ index }: { index: number }) {
   )
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: CompressorStatus
-}) {
+function MetricIcon({ index }: { index: number }) {
+  const paths = [
+    'M3 8h12a3 3 0 1 0-3-3 M3 12h16a3 3 0 1 1-3 3 M3 16h5',
+    'M4 18a9 9 0 1 1 16 0 M12 13l5-5 M10 18h4',
+    'M12 3l6 8a7 7 0 1 1-12 0z',
+    'M3 4h18v13H3z M8 21h8 M12 17v4',
+  ]
+
+  return (
+    <svg
+      className="kpi-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[index]} />
+    </svg>
+  )
+}
+
+function StatusBadge({ status }: { status: FleetStatus }) {
   return (
     <span
       className={`equipment-status status-${status.toLowerCase()}`}
     >
       <span className="equipment-dot" aria-hidden="true" />
-      {status}
+      <span>{statusLabel(status)}</span>
     </span>
   )
 }
 
-function EmptyLive() {
-  return (
-    <div className="empty-state">
-      <span className="empty-symbol" aria-hidden="true">
-        ◇
-      </span>
-
-      <h3>Belum ada data Live</h3>
-
-      <p>
-        Sumber data aktual belum terhubung. Aktifkan Mode Demo
-        untuk melihat contoh dashboard.
-      </p>
-    </div>
-  )
-}
-
-function FlowSparkline({
-  history,
+function EmptyPanel({
+  title,
+  message,
 }: {
-  history: TrendSample[]
+  title: string
+  message: string
 }) {
-  if (history.length < 2) return null
-
-  const samples = history.slice(-30)
-  const values = samples.map((sample) => sample.totalFlow)
-
-  const minimum = Math.min(...values)
-  const range = Math.max(
-    Math.max(...values) - minimum,
-    100,
-  )
-
-  const start = samples[0].timestamp
-  const duration = Math.max(
-    samples[samples.length - 1].timestamp - start,
-    1,
-  )
-
-  const segments: TrendSample[][] = []
-
-  samples.forEach((sample, index) => {
-    const isNewSegment =
-      index === 0 ||
-      sample.timestamp - samples[index - 1].timestamp > 6000
-
-    if (isNewSegment) {
-      segments.push([sample])
-    } else {
-      segments[segments.length - 1].push(sample)
-    }
-  })
-
   return (
-    <svg
-      className="flow-sparkline"
-      viewBox="0 0 100 38"
-      role="img"
-      aria-label="Tren Total Air Flow simulasi"
-    >
-      {segments.map((segment) => (
-        <polyline
-          key={segment[0].timestamp}
-          points={segment
-            .map((sample) => {
-              const x =
-                3 + ((sample.timestamp - start) / duration) * 94
-
-              const y =
-                34 - ((sample.totalFlow - minimum) / range) * 28
-
-              return `${x},${y}`
-            })
-            .join(' ')}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ))}
-    </svg>
+    <section className="panel">
+      <div className="empty-state">
+        <span className="empty-symbol" aria-hidden="true">
+          ◇
+        </span>
+        <h3>{title}</h3>
+        <p>{message}</p>
+      </div>
+    </section>
   )
 }
 
-function App() {
-  const [demoMode, setDemoMode] = useState(false)
+export default function App() {
+  const [mode, setMode] = useState<DataMode>('historical')
   const [activeMenu, setActiveMenu] = useState(menus[0])
-  const [selectedUnitId, setSelectedUnitId] = useState('SAC#1')
+  const [selectedUnitId, setSelectedUnitId] = useState('SAC#14')
+  const [fleetFilter, setFleetFilter] = useState<
+    'All' | FleetStatus
+  >('All')
+  const [fleetSearch, setFleetSearch] = useState('')
+  const [day, setDay] = useState('2026-01-01')
+  const [time, setTime] = useState('00:00')
   const [clock, setClock] = useState(() => new Date())
 
-  const { snapshot, history, resetDemo } = useDemoData(demoMode)
+  const demoMode = mode === 'demo'
+  const historicalMode = mode === 'historical'
 
-  const compressors = snapshot?.compressors ?? []
+  const { snapshot, resetDemo } = useDemoData(demoMode)
+  const history = useHistoricalFleet(historicalMode, day, time)
 
-  const selectedUnit =
-    compressors.find((unit) => unit.id === selectedUnitId) ?? null
+  // Sumber data kartu fleet:
+  // Historical -> API MySQL
+  // Demo       -> simulator
+  // Live       -> belum ada gateway
+  const compressors: FleetUnit[] = historicalMode
+    ? history.compressors
+    : demoMode
+      ? snapshot?.compressors ?? []
+      : []
 
-  const fleet = {
-    active: compressors.filter(
-      (unit) => unit.acquisitionActive,
+  const counts = {
+    Running: compressors.filter(
+      (unit) => unit.status === 'Running',
     ).length,
-    inactive: compressors.filter(
-      (unit) => !unit.acquisitionActive,
+    Standby: compressors.filter(
+      (unit) => unit.status === 'Standby',
     ).length,
-    loaded: compressors.filter(
-      (unit) => unit.status === 'Loaded',
+    Isolate: compressors.filter(
+      (unit) => unit.status === 'Isolate',
     ).length,
-    unloaded: compressors.filter(
-      (unit) => unit.status === 'Unloaded',
-    ).length,
-    trip: compressors.filter(
+    Trip: compressors.filter(
       (unit) => unit.status === 'Trip',
     ).length,
+    Unknown: compressors.filter(
+      (unit) => unit.status === 'Unknown',
+    ).length,
   }
+
+  const availableUnits = compressors.filter(
+    (unit) => unit.sourceTime,
+  ).length
+
+  const selectedUnit =
+    compressors.find((unit) => unit.id === selectedUnitId) ??
+    null
+
+  const visibleCompressors = compressors.filter((unit) => {
+    const matchesStatus =
+      fleetFilter === 'All' || unit.status === fleetFilter
+
+    const matchesSearch = unit.id
+      .toLowerCase()
+      .includes(fleetSearch.trim().toLowerCase())
+
+    return matchesStatus && matchesSearch
+  })
+
+  const modeLabel = demoMode
+    ? 'DEMO'
+    : historicalMode
+      ? 'HISTORICAL'
+      : 'LIVE · DISCONNECTED'
+
+  const sourceDescription = demoMode
+    ? 'Data simulasi frontend — bukan pembacaan perangkat'
+    : historicalMode
+      ? 'Data historis MySQL melalui backend API'
+      : 'Menunggu koneksi gateway instrumen lapangan'
+
+  const displayedTime = historicalMode
+    ? history.sourceTime
+    : demoMode && snapshot
+      ? `${formatTime(snapshot.timestamp)} WITA`
+      : '—'
+
+  const metrics = [
+    {
+      title: 'Total Air Flow',
+      value: demoMode && snapshot
+        ? formatReading(snapshot.totalFlow, 1)
+        : '—',
+      unit: 'SCFM',
+      category: 'flow',
+      description: demoMode
+        ? 'Contoh total aliran simulasi'
+        : 'Tag total flow belum tersedia',
+    },
+    {
+      title: 'Header System Pressure',
+      value: demoMode && snapshot
+        ? formatReading(snapshot.headerPressure, 1)
+        : '—',
+      unit: 'psi',
+      category: 'pressure',
+      description: demoMode
+        ? 'Contoh tekanan header simulasi'
+        : 'Tag tekanan header belum tersedia',
+    },
+    {
+      title: 'Dew Point Temperature',
+      value: demoMode && snapshot
+        ? formatReading(snapshot.dewPoint, 1)
+        : '—',
+      unit: '°F',
+      category: 'dewpoint',
+      description: demoMode
+        ? 'Contoh dew point simulasi'
+        : 'Tag dew point belum tersedia',
+    },
+    {
+      title: 'Compressor Fleet Status',
+      value: demoMode && snapshot
+        ? `${counts.Running} / 15`
+        : '—',
+      unit: 'Units Running',
+      category: 'fleet',
+      description: demoMode
+        ? `${counts.Standby} Standby · ${counts.Isolate} Isolate · ${counts.Trip} Trip`
+        : 'Status operasi belum diverifikasi',
+    },
+  ]
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -200,10 +336,18 @@ function App() {
     return () => window.clearInterval(timer)
   }, [])
 
-  function toggleDemo() {
+  function changeMode(value: string) {
+    if (
+      value !== 'demo' &&
+      value !== 'historical' &&
+      value !== 'live'
+    ) {
+      return
+    }
+
     resetDemo()
-    setDemoMode((previous) => !previous)
-    setSelectedUnitId('SAC#1')
+    setMode(value)
+    setFleetFilter('All')
   }
 
   function openUnit(id: string) {
@@ -211,54 +355,17 @@ function App() {
     setActiveMenu(menus[1])
   }
 
-  const metrics = [
-    {
-      title: 'Total Air Flow',
-      value: snapshot
-        ? snapshot.totalFlow.toLocaleString('en-US')
-        : '—',
-      unit: 'SCFM',
-    },
-    {
-      title: 'Header System Pressure',
-      value: snapshot
-        ? snapshot.headerPressure.toFixed(1)
-        : '—',
-      unit: 'psi',
-    },
-    {
-      title: 'Dew Point Temperature',
-      value: snapshot
-        ? snapshot.dewPoint.toFixed(1)
-        : '—',
-      unit: '°F',
-    },
-    {
-      title: 'Data Acquisition',
-      value: snapshot ? String(fleet.active) : '—',
-      unit: 'Units Active',
-    },
-  ]
+  function unitSourceLabel(unit: FleetUnit) {
+    if (historicalMode) {
+      return unit.sourceTime
+        ? `Historis · ${unit.sourceTime}`
+        : unit.issue ?? 'Data tidak tersedia'
+    }
 
-  const unitMetrics = selectedUnit
-    ? [
-        {
-          title: 'Discharge Pressure',
-          value: formatReading(selectedUnit.dischargePressure),
-          unit: 'psi',
-        },
-        {
-          title: 'Oil Pressure',
-          value: formatReading(selectedUnit.oilPressure),
-          unit: 'psi',
-        },
-        {
-          title: 'Motor Current',
-          value: formatReading(selectedUnit.motorCurrent, 0),
-          unit: 'Amp',
-        },
-      ]
-    : []
+    return unit.acquisitionActive
+      ? 'Data simulasi tersedia'
+      : 'Data simulasi tidak tersedia'
+  }
 
   return (
     <div className="dashboard">
@@ -281,12 +388,9 @@ function App() {
         </div>
 
         <div className="department">
-          <span className="eyebrow">
-            PT VALE INDONESIA
-          </span>
-
+          <span className="eyebrow">PT VALE INDONESIA</span>
           <p>
-            Energy & Logistic
+            Energy &amp; Logistics
             <br />
             Department
           </p>
@@ -316,74 +420,114 @@ function App() {
         </nav>
 
         <div className="sidebar-summary">
-          <span className="eyebrow">
-            {demoMode ? 'SAMPLE FLEET' : 'LIVE FLEET'}
-          </span>
+          <div className="sidebar-summary-header">
+            <span className="eyebrow">
+              COMPRESSOR RUNNING
+            </span>
+            <span className="fleet-live-pill">
+              {modeLabel}
+            </span>
+          </div>
 
-          <p className="fleet-count">
-            {snapshot ? fleet.active : '—'}
+          <div className="fleet-count">
+            <strong>
+              {demoMode && snapshot ? counts.Running : '—'}
+            </strong>
+            <small> / 15 Units Running</small>
+          </div>
 
-            <small>
-              {snapshot
-                ? ` / ${compressors.length} communicating`
-                : ' / —'}
-            </small>
-          </p>
+          <div className="fleet-bar">
+            {statuses.map((status) => (
+              <div
+                key={status}
+                className={`fleet-bar-seg seg-${status.toLowerCase()}`}
+                style={{
+                  width: demoMode
+                    ? `${(counts[status] / 15) * 100}%`
+                    : '0%',
+                }}
+              />
+            ))}
+          </div>
 
-          <p className="fleet-detail">
-            {snapshot
-              ? `${fleet.loaded} loaded · ${fleet.unloaded} unloaded · ${fleet.trip} trip`
-              : 'Menunggu sumber data'}
-          </p>
+          <div className="fleet-status-chips">
+            {statuses.map((status) => (
+              <span
+                key={status}
+                className={`chip-item chip-${status.toLowerCase()}`}
+              >
+                <span
+                  className={`dot dot-${status.toLowerCase()}`}
+                />
+                {' '}{demoMode ? counts[status] : '—'}{' '}
+                {status}
+              </span>
+            ))}
+          </div>
 
-          <p className="fleet-detail">
-            {snapshot
-              ? `${fleet.inactive} unit tanpa data simulasi`
-              : 'Tidak ada koneksi Live'}
-          </p>
+          {historicalMode && (
+            <p className="fleet-history-note">
+              {history.loading
+                ? 'Memuat sampel historis…'
+                : `${availableUnits}/15 unit memiliki sampel`}
+            </p>
+          )}
         </div>
 
         <div className="sidebar-footer">
           <span className="readonly-badge">
-            {demoMode ? 'READ-ONLY DEMO' : 'READ-ONLY LIVE'}
+            READ-ONLY · {modeLabel}
           </span>
-
           <p>
             Dashboard pemantauan.
             <br />
             Tidak menyediakan kontrol mesin.
           </p>
-
-          <small>SERVICE AIR / OPERATIONS</small>
+          <small>SOROWAKO PLANT / UTILITY</small>
         </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
-          <div>
+          <div className="topbar-title-wrap">
+            <div className="plant-tag">
+              <span className="plant-pulse" />
+              <span>SOROWAKO PLANT · UTILITY SYSTEMS</span>
+            </div>
+
             <h1>
-              Service Air Compressor Online Dashboard Monitoring System
+              Service Air Compressor Online Dashboard
+              Monitoring System
             </h1>
 
             <p className="breadcrumb">
-              UTILITY SYSTEMS / SERVICE AIR / OPERATIONS CONTROL
+              UTILITY SYSTEMS / SERVICE AIR / OPERATIONS
+              CONTROL
             </p>
           </div>
 
-          <div className="clock">
-            <div>
-              <strong>{formatTime(clock.getTime())}</strong>
-              <span>WITA · UTC+08:00</span>
+          <div
+            className="clock-card"
+            aria-label="Jam komputer dalam WITA"
+          >
+            <div className="clock-top">
+              <strong className="clock-time">
+                {formatTime(clock.getTime())}
+              </strong>
+              <span className="clock-tz">UTC+08:00</span>
             </div>
 
-            <small>
-              {clock.toLocaleDateString('en-GB', {
-                timeZone: 'Asia/Makassar',
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </small>
+            <div className="clock-bottom">
+              <span>
+                {clock.toLocaleDateString('id-ID', {
+                  timeZone: 'Asia/Makassar',
+                  weekday: 'short',
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -391,51 +535,37 @@ function App() {
           <div className="connection-status" role="status">
             <span
               className={`status-dot ${
-                demoMode ? 'demo-dot' : 'offline-dot'
+                demoMode
+                  ? 'demo-dot'
+                  : historicalMode
+                    ? 'history-dot'
+                    : 'offline-dot'
               }`}
               aria-hidden="true"
             />
-
-            <span>
-              {demoMode
-                ? 'Demo / Sample telemetry — not connected'
-                : 'Live / Belum terhubung ke sumber data'}
-            </span>
-          </div>
-
-          <div
-            className="status-summary"
-            aria-label="Status akuisisi"
-          >
-            <span className="summary-active">
-              ● {snapshot ? fleet.active : '—'} acquisition active
-            </span>
-
-            <span>
-              ○ {snapshot ? fleet.inactive : '—'} inactive
-            </span>
-
-            <span className="summary-trip">
-              ● {snapshot ? fleet.trip : '—'} trip
-              {demoMode ? ' (demo)' : ''}
-            </span>
+            <span>{sourceDescription}</span>
           </div>
 
           <div className="mode-control">
-            <span id="demo-label">Demo</span>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={demoMode}
-              aria-labelledby="demo-label"
-              className={`mode-switch ${
-                demoMode ? 'enabled' : ''
-              }`}
-              onClick={toggleDemo}
+            <label htmlFor="data-source-mode">
+              Sumber data
+            </label>
+            <select
+              id="data-source-mode"
+              className="history-select"
+              value={mode}
+              onChange={(event) =>
+                changeMode(event.target.value)
+              }
             >
-              <span className="switch-thumb" />
-            </button>
+              <option value="historical">
+                Historical · MySQL
+              </option>
+              <option value="demo">Demo · Simulasi</option>
+              <option value="live">
+                Live · Belum terhubung
+              </option>
+            </select>
           </div>
         </div>
 
@@ -443,20 +573,100 @@ function App() {
           <div className="page-heading">
             <div>
               <h2>{activeMenu}</h2>
-
               <p className="muted">
-                {demoMode
-                  ? 'Macro plant monitoring / 15-unit demo fleet · Data ilustrasi'
-                  : 'Mode Live / Data aktual belum tersedia'}
+                {sourceDescription}
               </p>
             </div>
-
-            <span className="mode-badge">
-              {demoMode
-                ? 'DEMO / OPERATOR VIEW'
-                : 'LIVE / NO CONNECTION'}
-            </span>
+            <span className="mode-badge">{modeLabel}</span>
           </div>
+
+          {historicalMode && (
+            <section
+              className="history-controls"
+              aria-label="Pengaturan waktu historis"
+            >
+              <div className="history-toolbar">
+                <label>
+                  Tanggal sumber
+                  <input
+                    type="date"
+                    value={day}
+                    onChange={(event) => {
+                      if (
+                        /^\d{4}-\d{2}-\d{2}$/.test(
+                          event.target.value,
+                        )
+                      ) {
+                        setDay(event.target.value)
+                      }
+                    }}
+                  />
+                </label>
+
+                <label>
+                  Jam sumber
+                  <input
+                    type="time"
+                    step="1"
+                    value={time}
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        setTime(event.target.value)
+                      }
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={history.loading}
+                  onClick={history.refresh}
+                >
+                  {history.loading
+                    ? 'Memuat…'
+                    : 'Muat ulang data'}
+                </button>
+
+                <span role="status">
+                  {history.loading
+                    ? 'Mengambil data dari API…'
+                    : history.error
+                      ? 'Pengambilan data gagal'
+                      : `${availableUnits}/15 unit memiliki sampel pada waktu pilihan`}
+                </span>
+              </div>
+
+              <p className="history-help">
+                Data tampil langsung di kartu fleet.
+                Timestamp mengikuti file sumber tanpa
+                konversi zona waktu. Satuan dan status operasi
+                belum diverifikasi.
+              </p>
+
+              {history.error && (
+                <p className="history-error" role="alert">
+                  {history.error} Periksa backend port 4000
+                  dan koneksi MySQL.
+                </p>
+              )}
+
+              {history.warnings.map((message) => (
+                <p className="history-error" key={message}>
+                  {message}
+                </p>
+              ))}
+
+              {history.notes.length > 0 && (
+                <details>
+                  <summary>Informasi sumber impor</summary>
+                  {history.notes.map((note) => (
+                    <p key={note}>{note}</p>
+                  ))}
+                </details>
+              )}
+            </section>
+          )}
 
           {activeMenu === menus[0] && (
             <>
@@ -466,263 +676,535 @@ function App() {
               >
                 {metrics.map((metric, index) => (
                   <article
-                    className="metric-card"
                     key={metric.title}
+                    className={`metric-card metric-card-${metric.category}`}
                   >
-                    <h3>{metric.title}</h3>
-
-                    <div className="metric-value-row">
-                      <div className="metric-reading">
-                        <strong>{metric.value}</strong>
-                        <span>{metric.unit}</span>
+                    <div className="kpi-header">
+                      <h3>{metric.title}</h3>
+                      <div className="kpi-icon-wrap">
+                        <MetricIcon index={index} />
                       </div>
-
-                      {index === 0 && demoMode && (
-                        <FlowSparkline history={history} />
-                      )}
                     </div>
 
-                    <p className={demoMode ? 'demo-text' : 'muted'}>
-                      {demoMode
-                        ? 'Sample telemetry · Simulasi frontend'
-                        : 'Menunggu data aktual'}
+                    <div className="kpi-reading">
+                      <strong>{metric.value}</strong>
+                      <span className="kpi-unit">
+                        {metric.unit}
+                      </span>
+                    </div>
+
+                    <p className="kpi-desc">
+                      {metric.description}
                     </p>
                   </article>
                 ))}
               </section>
 
               <section className="panel">
-                <div className="panel-header">
-                  <h3>Service air compressor fleet</h3>
+                <div className="panel-header fleet-panel-header">
+                  <div>
+                    <h3>
+                      Service Air Compressor Fleet (15 Units)
+                    </h3>
+                    <p className="panel-subtitle">
+                      {historicalMode
+                        ? `HISTORICAL · ${history.sourceTime}`
+                        : demoMode
+                          ? `${counts.Running} RUNNING / ${counts.Standby} STANDBY / ${counts.Isolate} ISOLATE / ${counts.Trip} TRIP`
+                          : 'MENUNGGU KONEKSI LIVE'}
+                    </p>
+                  </div>
 
-                  <span className="fleet-status-summary">
-                    {snapshot
-                      ? `${fleet.loaded} LOADED / ${fleet.unloaded} UNLOADED / ${fleet.trip} TRIP / ${fleet.inactive} INACTIVE`
-                      : 'MENUNGGU DATA AKTUAL'}
-                  </span>
+                  <div className="fleet-controls">
+                    <div className="fleet-filter-pills">
+                      <button
+                        type="button"
+                        className={`fleet-pill ${
+                          fleetFilter === 'All'
+                            ? 'is-active'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          setFleetFilter('All')
+                        }
+                      >
+                        Semua ({compressors.length})
+                      </button>
+
+                      {statuses.map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          className={`fleet-pill fleet-pill-${status.toLowerCase()} ${
+                            fleetFilter === status
+                              ? 'is-active'
+                              : ''
+                          }`}
+                          onClick={() =>
+                            setFleetFilter(status)
+                          }
+                        >
+                          <span
+                            className={`pill-dot ${status.toLowerCase()}-dot`}
+                          />
+                          {status} (
+                          {demoMode ? counts[status] : '—'})
+                        </button>
+                      ))}
+
+                      {historicalMode && (
+                        <button
+                          type="button"
+                          className={`fleet-pill ${
+                            fleetFilter === 'Unknown'
+                              ? 'is-active'
+                              : ''
+                          }`}
+                          onClick={() =>
+                            setFleetFilter('Unknown')
+                          }
+                        >
+                          Belum diketahui ({counts.Unknown})
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="fleet-search-wrap">
+                      <svg
+                        className="search-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <circle cx="10" cy="10" r="6" />
+                        <path d="m15 15 6 6" />
+                      </svg>
+
+                      <input
+                        type="search"
+                        aria-label="Cari kompresor"
+                        placeholder="Cari kompresor..."
+                        value={fleetSearch}
+                        onChange={(event) =>
+                          setFleetSearch(event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {snapshot ? (
+                {mode === 'live' ? (
+                  <div className="empty-state">
+                    <h3>Mode Live Belum Terhubung</h3>
+                    <p>
+                      Pilih Historical · MySQL untuk melihat
+                      data impor CSV.
+                    </p>
+                  </div>
+                ) : visibleCompressors.length ? (
                   <div className="compressor-grid">
-                    {compressors.map((unit) => (
+                    {visibleCompressors.map((unit) => (
                       <button
                         key={unit.id}
                         type="button"
-                        className="compressor-card compressor-link"
-                        aria-label={`Lihat telemetry ${unit.id}`}
+                        className={`compressor-card compressor-link compressor-${unit.status.toLowerCase()}`}
                         onClick={() => openUnit(unit.id)}
+                        aria-label={`Buka detail ${unit.id}`}
                       >
-                        <span className="compressor-heading">
-                          <strong className="compressor-name">
-                            {unit.id}
-                          </strong>
-
+                        <div className="compressor-heading">
+                          <div className="compressor-name-wrap">
+                            <strong className="compressor-name">
+                              {unit.id}
+                            </strong>
+                            <span className="compressor-type-badge">
+                              CENTAC
+                            </span>
+                          </div>
                           <StatusBadge status={unit.status} />
-                        </span>
+                        </div>
 
                         <span className="acquisition-label">
-                          {unit.acquisitionActive
-                            ? 'Sample telemetry · ACQ active'
-                            : 'ACQ inactive · Data tidak tersedia'}
+                          {unitSourceLabel(unit)}
                         </span>
 
-                        <span className="card-values">
-                          <span>
-                            <small>Disch. (psi)</small>
-                            <b>
-                              {formatReading(unit.dischargePressure)}
-                            </b>
-                          </span>
+                        <div className="card-values">
+                          {historicalMode &&
+                          unit.cardHighlights &&
+                          unit.cardHighlights.length > 0
+                            ? unit.cardHighlights.map((param) => (
+                                <div
+                                  className="val-box"
+                                  key={param.tag}
+                                >
+                                  <div className="val-header">
+                                    <span className="val-label">
+                                      {param.shortLabel}
+                                    </span>
+                                    <span className="val-unit">
+                                      {param.unit}
+                                    </span>
+                                  </div>
 
-                          <span>
-                            <small>Oil (psi)</small>
-                            <b>
-                              {formatReading(unit.oilPressure)}
-                            </b>
-                          </span>
+                                  <b className="val-number">
+                                    {formatReading(param.value)}
+                                  </b>
+                                </div>
+                              ))
+                            : cardParameters.map((parameter) => (
+                                <div
+                                  className="val-box"
+                                  key={parameter.field}
+                                >
+                                  <div className="val-header">
+                                    <span className="val-label">
+                                      {parameter.title}
+                                    </span>
+                                    <span className="val-unit">
+                                      {historicalMode
+                                        ? 'RAW'
+                                        : parameter.unit}
+                                    </span>
+                                  </div>
 
-                          <span>
-                            <small>Motor (Amp)</small>
-                            <b>
-                              {formatReading(unit.motorCurrent, 0)}
-                            </b>
-                          </span>
-                        </span>
+                                  <b className="val-number">
+                                    {formatReading(
+                                      unit[parameter.field],
+                                    )}
+                                  </b>
+                                </div>
+                              ))}
+                        </div>
+
+                        <div className="card-footer-action">
+                          <span>Buka Detail Sensor</span>
+                          <svg
+                            viewBox="0 0 16 16"
+                            width="12"
+                            height="12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                          >
+                            <path d="M6 12l4-4-4-4" />
+                          </svg>
+                        </div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <EmptyLive />
+                  <div className="empty-state">
+                    <h3>Tidak ada unit yang sesuai</h3>
+                    <p>
+                      Pilih filter Semua dan kosongkan
+                      pencarian.
+                    </p>
+                  </div>
                 )}
               </section>
 
               <p className="overview-note">
-                {snapshot
-                  ? `Pembaruan simulasi: ${formatTime(snapshot.timestamp)} WITA · Klik kartu untuk membuka telemetry.`
-                  : 'Aktifkan Demo untuk melihat contoh 15 unit kompresor.'}
+                Waktu sumber: {displayedTime} · Klik kartu
+                untuk melihat tujuh parameter.
               </p>
             </>
           )}
 
           {activeMenu === menus[1] && (
             <>
-              <div className="telemetry-toolbar">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setActiveMenu(menus[0])}
-                >
-                  ← Kembali ke Overview
-                </button>
-
-                <div className="unit-picker">
-                  <label htmlFor="unit-select">
-                    Pilih kompresor
-                  </label>
-
-                  <select
-                    id="unit-select"
-                    value={snapshot ? selectedUnitId : ''}
-                    disabled={!snapshot}
-                    onChange={(event) => {
-                      setSelectedUnitId(event.target.value)
-                    }}
+              <div className="unit-nav-bar">
+                <div className="unit-nav-left">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setActiveMenu(menus[0])}
                   >
-                    {!snapshot && (
-                      <option value="">
-                        Belum ada unit Live
-                      </option>
-                    )}
+                    ← Overview Fleet
+                  </button>
+                  <span className="unit-nav-divider" />
+                  <span className="unit-nav-label">
+                    Pilih unit:
+                  </span>
+                </div>
 
-                    {compressors.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.id} — {unit.status}
-                      </option>
-                    ))}
-                  </select>
+                <div className="unit-selector-strip">
+                  {compressors.map((unit) => (
+                    <button
+                      key={unit.id}
+                      type="button"
+                      className={`unit-strip-btn unit-strip-${unit.status.toLowerCase()} ${
+                        selectedUnitId === unit.id
+                          ? 'is-active'
+                          : ''
+                      }`}
+                      aria-pressed={
+                        selectedUnitId === unit.id
+                      }
+                      onClick={() =>
+                        setSelectedUnitId(unit.id)
+                      }
+                    >
+                      <span className="unit-strip-dot" />
+                      <span className="unit-strip-name">
+                        {unit.id}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {selectedUnit && snapshot ? (
+              {selectedUnit ? (
                 <>
                   <section className="panel unit-detail-panel">
                     <div className="unit-detail-heading">
-                      <div>
-                        <span className="eyebrow">
-                          SELECTED COMPRESSOR
-                        </span>
+                      <div className="unit-heading-left">
+                        <div className="unit-asset-badge">
+                          <span>CENTAC</span>
+                        </div>
 
-                        <h3>{selectedUnit.id}</h3>
+                        <h3>
+                          {selectedUnit.id} — Service Air
+                          Compressor
+                        </h3>
 
                         <p className="muted">
-                          Service air compressor · Contoh unit
+                          {sourceDescription}
                         </p>
                       </div>
 
-                      <StatusBadge status={selectedUnit.status} />
+                      <StatusBadge
+                        status={selectedUnit.status}
+                      />
                     </div>
 
                     <dl className="unit-information">
                       <div>
-                        <dt>Data source</dt>
-                        <dd>Demo / Simulasi frontend</dd>
-                      </div>
-
-                      <div>
-                        <dt>Acquisition</dt>
+                        <dt>Status operasi</dt>
                         <dd>
-                          {selectedUnit.acquisitionActive
-                            ? 'Active (demo)'
-                            : 'Inactive (demo)'}
+                          {statusLabel(selectedUnit.status)}
                         </dd>
                       </div>
 
                       <div>
                         <dt>Ketersediaan data</dt>
+                        <dd>{unitSourceLabel(selectedUnit)}</dd>
+                      </div>
+
+                      <div>
+                        <dt>Sumber data</dt>
                         <dd>
-                          {selectedUnit.acquisitionActive
-                            ? 'Nilai contoh tersedia'
-                            : 'Tidak tersedia'}
+                          {historicalMode
+                            ? selectedUnit.sourceFile
+                              ? `${selectedUnit.sourceFile} · Impor #${selectedUnit.importId}`
+                              : '—'
+                            : 'Simulasi frontend'}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Pembaruan nilai</dt>
+                        <dt>Waktu sumber</dt>
                         <dd>
-                          {selectedUnit.acquisitionActive
-                            ? `${formatTime(snapshot.timestamp)} WITA`
-                            : '—'}
+                          {historicalMode
+                            ? selectedUnit.sourceTime ?? '—'
+                            : displayedTime}
                         </dd>
                       </div>
                     </dl>
                   </section>
 
-                  <section
-                    className="metrics telemetry-metrics"
-                    aria-label={`Parameter ${selectedUnit.id}`}
-                  >
-                    {unitMetrics.map((metric) => (
-                      <article
-                        className="metric-card"
-                        key={metric.title}
-                      >
-                        <h3>{metric.title}</h3>
+                  {historicalMode &&
+                  selectedUnit.customParameters &&
+                  selectedUnit.customParameters.length > 0 ? (
+                    <div>
+                      <div className="telemetry-section-header">
+                        <span className="section-pill">
+                          PARAMETER INSTRUMEN ({selectedUnit.id})
+                        </span>
+                        <h4>
+                          Parameter Sesuai File CSV ({selectedUnit.sourceFile})
+                        </h4>
+                      </div>
 
-                        <div className="metric-reading">
-                          <strong>{metric.value}</strong>
-                          <span>{metric.unit}</span>
+                      <section
+                        className="metrics telemetry-metrics-4col"
+                        aria-label={`Parameter ${selectedUnit.id}`}
+                      >
+                        {selectedUnit.customParameters.map((sensor) => (
+                          <article
+                            key={sensor.tag}
+                            className={`metric-card telemetry-card telemetry-${sensor.category}`}
+                          >
+                            <div className="metric-tag-row">
+                              <code
+                                className="metric-tag-code"
+                                title={sensor.tag}
+                              >
+                                {sensor.tag}
+                              </code>
+                            </div>
+
+                            <div className="kpi-header">
+                              <h3>{sensor.label}</h3>
+                            </div>
+
+                            <div className="kpi-reading">
+                              <strong>
+                                {formatReading(sensor.value)}
+                              </strong>
+                              <span className="kpi-unit">
+                                {sensor.unit}
+                              </span>
+                            </div>
+
+                            <div className="telemetry-footer-status">
+                              <span>
+                                {sensor.value === null
+                                  ? 'Nilai tidak tersedia / NaN'
+                                  : 'Data historis CSV'}
+                              </span>
+                            </div>
+                          </article>
+                        ))}
+                      </section>
+                    </div>
+                  ) : (
+                    [
+                      {
+                        title: 'Suhu dan Tekanan Proses',
+                        label: 'PROSES UTAMA',
+                        className: 'telemetry-metrics-4col',
+                        definitions:
+                          sensorDefinitions.slice(0, 4),
+                      },
+                      {
+                        title: 'Bearing dan CT Input',
+                        label: 'MEKANIKAL & ELEKTRIKAL',
+                        className: 'telemetry-metrics-3col',
+                        definitions:
+                          sensorDefinitions.slice(4),
+                      },
+                    ].map((group) => (
+                      <div key={group.title}>
+                        <div className="telemetry-section-header">
+                          <span className="section-pill">
+                            {group.label}
+                          </span>
+                          <h4>{group.title}</h4>
                         </div>
 
-                        <p className="muted">
-                          {selectedUnit.acquisitionActive
-                            ? 'Nilai simulasi'
-                            : 'Akuisisi tidak aktif'}
-                        </p>
-                      </article>
-                    ))}
-                  </section>
+                        <section
+                          className={`metrics ${group.className}`}
+                          aria-label={group.title}
+                        >
+                          {group.definitions.map((sensor) => {
+                            const value =
+                              selectedUnit[sensor.field]
 
-                  <section className="panel">
-                    <div className="panel-header">
-                      <h3>Keterangan status unit</h3>
-                    </div>
+                            const tag =
+                              `U-${selectedUnit.id.replace('#', '')}-${sensor.suffix}`
 
-                    <div className="unit-explanation">
-                      <p>
-                        {statusDescriptions[selectedUnit.status]}
-                      </p>
-                    </div>
-                  </section>
+                            return (
+                              <article
+                                key={sensor.field}
+                                className={`metric-card telemetry-card telemetry-${sensor.category}`}
+                              >
+                                <div className="metric-tag-row">
+                                  <code
+                                    className="metric-tag-code"
+                                    title={tag}
+                                  >
+                                    {tag}
+                                  </code>
+                                </div>
+
+                                <div className="kpi-header">
+                                  <h3>{sensor.title}</h3>
+                                </div>
+
+                                <div className="kpi-reading">
+                                  <strong>
+                                    {formatReading(value)}
+                                  </strong>
+                                  <span className="kpi-unit">
+                                    {historicalMode
+                                      ? 'RAW'
+                                      : sensor.unit}
+                                  </span>
+                                </div>
+
+                                <div className="telemetry-footer-status">
+                                  <span>
+                                    {value === null
+                                      ? 'Nilai tidak tersedia'
+                                      : historicalMode
+                                        ? 'Nilai mentah · satuan belum diverifikasi'
+                                        : 'Data simulasi'}
+                                  </span>
+                                </div>
+                              </article>
+                            )
+                          })}
+                        </section>
+                      </div>
+                    ))
+                  )}
+
+                  <div className="unit-explanation">
+                    <p>
+                      {historicalMode
+                        ? 'Data historis berasal dari impor CSV/Excel. Status mesin tidak ditentukan dari nilai CT atau suhu saja. Nilai nol tetap ditampilkan sebagai nol sesuai data sumber.'
+                        : 'Nilai dan status pada mode Demo adalah simulasi untuk pengembangan antarmuka.'}
+                    </p>
+
+                    {selectedUnit.issue && (
+                      <p>{selectedUnit.issue}</p>
+                    )}
+                  </div>
                 </>
               ) : (
-                <section className="panel">
-                  <EmptyLive />
-                </section>
+                <EmptyPanel
+                  title="Data unit belum tersedia"
+                  message="Pilih Historical · MySQL atau Demo untuk membuka detail kompresor."
+                />
               )}
             </>
           )}
 
-          {activeMenu === menus[2] && (
-            <ProcessTrends demoMode={demoMode} />
-          )}
+          {activeMenu === menus[2] &&
+            (demoMode ? (
+              <ProcessTrends demoMode={true} />
+            ) : (
+              <EmptyPanel
+                title={
+                  historicalMode
+                    ? 'Grafik historis belum dihubungkan'
+                    : 'Live belum terhubung'
+                }
+                message={
+                  historicalMode
+                    ? 'Data MySQL tersedia pada kartu fleet dan detail unit. Grafik historis memerlukan integrasi berikutnya.'
+                    : 'Gateway instrumen lapangan belum dikonfigurasi.'
+                }
+              />
+            ))}
 
-          {activeMenu === menus[3] && (
-            <AlarmsEvents demoMode={demoMode} />
-          )}
+          {activeMenu === menus[3] &&
+            (demoMode ? (
+              <AlarmsEvents
+                demoMode={true}
+                compressors={snapshot?.compressors ?? []}
+                timestamp={snapshot?.timestamp}
+              />
+            ) : (
+              <EmptyPanel
+                title="Data alarm belum tersedia"
+                message="Pemetaan sinyal Trip dan batas High High, High, Low, Low Low perlu diverifikasi sebelum digunakan."
+              />
+            ))}
         </div>
-
-        <footer className="main-footer">
-          <span>
-            {demoMode
-              ? 'Data simulasi untuk pengembangan antarmuka.'
-              : 'Sumber data aktual belum dikonfigurasi.'}
-          </span>
-
-          <span>READ-ONLY / NO DEVICE CONTROL</span>
-        </footer>
       </main>
     </div>
   )
 }
-
-export default App

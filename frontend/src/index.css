@@ -1,29 +1,29 @@
 :root {
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
-  color: #e5edf7;
-  background: #0f1728;
+  color: #F4F4F4;
+  background: #080f1e;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --page: #0f1728;
-  --surface: #1e293b;
-  --surface-soft: #172235;
-  --text: #e5edf7;
-  --muted: #a5b4c7;
-  --border: #304057;
+  /* PT Vale Indonesia Tbk Corporate Palette */
+  --vale-navy: #002D72;
+  --vale-teal: #0079A1;
+  --vale-sky: #A4C8E1;
+  --vale-white: #F4F4F4;
+  --vale-charcoal: #333333;
+  --vale-gray: #E2E2E2;
+  --vale-green: #00a66c;
 
-  --green: #5ee4b5;
-  --green-soft: #103d35;
-  --amber: #fbd36c;
-  --amber-soft: #44351a;
-  --red: #ff9aaa;
-  --red-soft: #40232e;
-  --blue: #a6ceff;
-  --blue-soft: #213853;
+  --page: #080f1e;
+  --surface: #0c1628;
+  --surface-card: #111e33;
+  --text: #F4F4F4;
+  --muted: #A4C8E1;
+  --border: rgba(164, 200, 225, 0.14);
 }
 
 *,
@@ -44,14 +44,6 @@ body {
   min-height: 100vh;
 }
 
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0;
-}
-
 button,
 input,
 select,
@@ -64,35 +56,7 @@ button {
   cursor: pointer;
 }
 
-button:disabled,
-select:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-button:focus-visible,
-select:focus-visible,
-input:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--green);
-  outline-offset: 3px;
-}
-
-input::placeholder {
-  color: var(--muted);
-}
-
-select option {
-  background: var(--surface-soft);
-  color: var(--text);
-}
-
-::selection {
-  background: #256c56;
-  color: #fff;
-}
-
 * {
   scrollbar-width: thin;
-  scrollbar-color: #506780 #15202d;
+  scrollbar-color: #0079A1 #080f1e;
 }
