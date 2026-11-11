@@ -10,7 +10,7 @@ dotenv.config({
   quiet: true,
 })
 
-const TAG_PATTERN = /^U-SAC(\d+)-[A-Z0-9_ -]+$/i
+const TAG_PATTERN = /^U-SAC(\d+)-[A-Z0-9_ /-]+$/i
 
 function pad2(value) {
   return String(value).padStart(2, '0')
@@ -136,33 +136,50 @@ export function validateCsv(csvText, order = 'mdy') {
     )
   }
 
-  const tags = headerCells.slice(1)
-  const unitNumbers = new Set()
+const tags = headerCells
+  .slice(1)
+  .map((tag) => tag.trim().toUpperCase())
 
-  for (const tag of tags) {
-    const match = TAG_PATTERN.exec(tag)
-    if (!match) {
-      throw new Error(
-        `Nama tag tidak valid: "${tag}". Gunakan format U-SAC<unit>-<parameter>.`,
-      )
-    }
-    const unitNumber = Number(match[1])
-    if (unitNumber < 1 || unitNumber > 15) {
-      throw new Error(
-        `Nomor unit pada tag "${tag}" di luar rentang SAC#1 sampai SAC#15.`,
-      )
-    }
-    unitNumbers.add(unitNumber)
+if (new Set(tags).size !== tags.length) {
+  throw new Error('Terdapat nama tag duplikat pada header CSV.')
+}
+
+const systemTags = new Set([
+  'U-AIR-FLOW-AI',
+  'U-AIR-PRESS-AI',
+  'U-PPAC-THERMALCADEWPOINT-B-AI',
+])
+
+const assets = new Set()
+
+for (const tag of tags) {
+  if (systemTags.has(tag)) {
+    assets.add('SYSTEM')
+    continue
   }
 
-  if (unitNumbers.size !== 1) {
-    throw new Error(
-      'Seluruh tag dalam satu file CSV harus berasal dari satu unit kompresor yang sama.',
-    )
+  const match = TAG_PATTERN.exec(tag)
+  const number = Number(match?.[1])
+
+  if (!match || number < 1 || number > 15) {
+    throw new Error(`Tag tidak dikenali: "${tag}".`)
   }
 
-  const [unitNumber] = [...unitNumbers]
-  const assetName = `SAC#${unitNumber}`
+  assets.add(`SAC#${number}`)
+}
+
+if (assets.size !== 1) {
+  throw new Error(
+    'Satu file harus berisi satu Centac atau parameter sistem saja.',
+  )
+}
+
+const [assetName] = [...assets]
+
+const unitNumber =
+  assetName === 'SYSTEM'
+    ? null
+    : Number(assetName.slice(4))
   const expectedColumns = headerCells.length
   const seenTimes = new Set()
   const samples = []
@@ -209,11 +226,6 @@ export function validateCsv(csvText, order = 'mdy') {
         throw new Error(
           `Baris ${rowNumber}, tag ${tags[columnIndex]}: nilai angka tidak valid.`,
         )
-      }
-
-      if (numericValue <= -9000) {
-        emptyValues += 1
-        return null
       }
 
       return numericValue
@@ -335,12 +347,10 @@ export async function persistImport(csv, fileName, fileHash, cardTags = []) {
           [importId, JSON.stringify(cardTags)],
         )
       } catch (displayError) {
-        // Jika tabel historical_display belum dimigrasikan atau user tidak memiliki akses, jangan gagalkan transaksi utama
+        // Jika tabel historical_display belum dimigrasikan, jangan gagalkan transaksi utama
         if (
           displayError.code !== 'ER_NO_SUCH_TABLE' &&
-          displayError.code !== 'ER_BAD_FIELD_ERROR' &&
-          displayError.code !== 'ER_TABLEACCESS_DENIED_ERROR' &&
-          displayError.code !== 'ER_COLUMNACCESS_DENIED_ERROR'
+          displayError.code !== 'ER_BAD_FIELD_ERROR'
         ) {
           throw displayError
         }

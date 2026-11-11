@@ -1,21 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Compressor, CompressorStatus } from './useDemoData'
+import { ACTIVE_UNIT_NUMBERS } from './fleetConfig'
+import {
+  getInstrumentMeta,
+  useInstrumentCatalog,
+} from './instrument-catalog'
+import type { InstrumentCatalog } from './instrument-catalog'
 
 export type FleetStatus = CompressorStatus | 'Unknown'
 
-export type DynamicParameter = {
-  tag: string
-  suffix: string
+type Category =
+  | 'temperature'
+  | 'pressure'
+  | 'mechanical'
+  | 'electrical'
+  | 'flow'
+  | 'status'
+
+type TagMeta = {
   label: string
   shortLabel: string
   unit: string
-  category:
-    | 'temperature'
-    | 'pressure'
-    | 'mechanical'
-    | 'electrical'
-    | 'flow'
-    | 'status'
+  category: Category
+}
+
+export type DynamicParameter = TagMeta & {
+  tag: string
+  suffix: string
   value: number | null
 }
 
@@ -64,250 +75,145 @@ type LoadState = {
 }
 
 const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL ||
-  'http://127.0.0.1:4000'
+  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:4000'
 ).replace(/\/$/, '')
 
-export const TAG_CATALOG: Record<
-  string,
-  {
-    label: string
-    shortLabel: string
-    unit: string
-    category: DynamicParameter['category']
-  }
-> = {
-  // Centac 2 & 14
-  'AIR-TEMP-STG1-AI-MS': {
-    label: 'Air Temperature Stage 1',
-    shortLabel: 'AIR TEMP 1',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'AIR-TEMP-STG2-AI-MS': {
-    label: 'Air Temperature Stage 2',
-    shortLabel: 'AIR TEMP 2',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'ANY-COMPRESSOR-TRIP-DI-MS': {
-    label: 'Any Compressor Trip Status',
-    shortLabel: 'TRIP DI',
-    unit: 'STATE',
-    category: 'status',
-  },
-  'BRG-DE-TEMP-AI-MS': {
-    label: 'Bearing DE Temperature',
-    shortLabel: 'BRG DE TEMP',
-    unit: '°C',
-    category: 'mechanical',
-  },
-  'BRG-NDE-TEMP-AI-MS': {
-    label: 'Bearing NDE Temperature',
-    shortLabel: 'BRG NDE TEMP',
-    unit: '°C',
-    category: 'mechanical',
-  },
-  'CT-INPUT-AI-MS': {
-    label: 'CT Input Current',
-    shortLabel: 'CT INPUT',
-    unit: 'A',
-    category: 'electrical',
-  },
-  'DSCH-PRESSURE-STG1-AI-MS': {
-    label: 'Discharge Pressure Stage 1',
-    shortLabel: 'PRESS STG 1',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'DSCH-PRESSURE-STG2-AI-MS': {
-    label: 'Discharge Pressure Stage 2',
-    shortLabel: 'PRESS STG 2',
-    unit: 'psi',
-    category: 'pressure',
-  },
-
-  // Centac 3
-  'PCV57033-AI': {
-    label: 'Pressure Control Valve PCV-57033',
-    shortLabel: 'PCV 57033',
-    unit: '%',
-    category: 'pressure',
-  },
-  'PT57033A-AI': {
-    label: 'Pressure Transmitter PT-57033A',
-    shortLabel: 'PT 57033A',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'PT57033B-AI': {
-    label: 'Pressure Transmitter PT-57033B',
-    shortLabel: 'PT 57033B',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'PT57033C-AI': {
-    label: 'Pressure Transmitter PT-57033C',
-    shortLabel: 'PT 57033C',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'PT57035A-AI': {
-    label: 'System Pressure PT-57035A',
-    shortLabel: 'PT 57035A',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'TT50733B-AI': {
-    label: 'Temperature Transmitter TT-50733B',
-    shortLabel: 'TT 50733B',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'TT57033A-AI': {
-    label: 'Temperature Transmitter TT-57033A',
-    shortLabel: 'TT 57033A',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'TT57033C-AI': {
-    label: 'Temperature Transmitter TT-57033C',
-    shortLabel: 'TT 57033C',
-    unit: '°C',
-    category: 'temperature',
-  },
-
-  // Centac 4
-  'FI-51037-AI': {
-    label: 'Flow Indicator FI-51037',
-    shortLabel: 'FLOW 51037',
-    unit: 'SCFM',
-    category: 'flow',
-  },
-  'FT57036-AI': {
-    label: 'Flow Transmitter FT-57036',
-    shortLabel: 'FT 57036',
-    unit: 'SCFM',
-    category: 'flow',
-  },
-  'FT57037-AI': {
-    label: 'Flow Transmitter FT-57037',
-    shortLabel: 'FT 57037',
-    unit: 'SCFM',
-    category: 'flow',
-  },
-  'HOT-AIR-DSCH-TEMP-AI-MS': {
-    label: 'Hot Air Discharge Temperature',
-    shortLabel: 'HOT AIR TEMP',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'I-RMS-A-AI-MS': {
-    label: 'Motor Current Phase A (RMS)',
-    shortLabel: 'I-RMS PHASE A',
-    unit: 'A',
-    category: 'electrical',
-  },
-  'I-RMS-B-AI-MS': {
-    label: 'Motor Current Phase B (RMS)',
-    shortLabel: 'I-RMS PHASE B',
-    unit: 'A',
-    category: 'electrical',
-  },
-  'I-RMS-C-AI-MS': {
-    label: 'Motor Current Phase C (RMS)',
-    shortLabel: 'I-RMS PHASE C',
-    unit: 'A',
-    category: 'electrical',
-  },
-
-  // Centac 7
-  'AVERAGE MOTOR WINDING TEMPERATURE-AI': {
-    label: 'Average Motor Winding Temperature',
-    shortLabel: 'WINDING TEMP',
-    unit: '°C',
-    category: 'temperature',
-  },
-  'B61-AI': {
-    label: 'Sensor Reading B61',
-    shortLabel: 'TAG B61',
-    unit: 'RAW',
-    category: 'mechanical',
-  },
-  'B62-AI': {
-    label: 'Sensor Reading B62',
-    shortLabel: 'TAG B62',
-    unit: 'RAW',
-    category: 'mechanical',
-  },
-  'B64-AI': {
-    label: 'Sensor Reading B64',
-    shortLabel: 'TAG B64',
-    unit: 'RAW',
-    category: 'mechanical',
-  },
-  'FI-51040-AI': {
-    label: 'Flow Indicator FI-51040',
-    shortLabel: 'FLOW 51040',
-    unit: 'SCFM',
-    category: 'flow',
-  },
-
-  // Centac 10
-  'MOTOR-OUTBOARD-BRG-TEMP-AI': {
-    label: 'Motor Outboard Bearing Temp',
-    shortLabel: 'OUTBOARD BRG',
-    unit: '°F',
-    category: 'mechanical',
-  },
-  'MOTOR-STATOR-TEMP-AI-MS': {
-    label: 'Motor Stator Temperature',
-    shortLabel: 'STATOR TEMP',
-    unit: '°F',
-    category: 'temperature',
-  },
-  'OIL-PRESSURE-AI-MS': {
-    label: 'Lube Oil Pressure',
-    shortLabel: 'OIL PRESS',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'READY-DI-MS': {
-    label: 'Compressor Ready Status (DI)',
-    shortLabel: 'READY DI',
-    unit: 'STATE',
-    category: 'status',
-  },
-  'SYSTEM-PRESSURE-AI-MS': {
-    label: 'System Discharge Pressure',
-    shortLabel: 'SYS PRESS',
-    unit: 'psi',
-    category: 'pressure',
-  },
-  'VIB-STG1X-AI-MS': {
-    label: 'Stage 1 Vibration X-Axis',
-    shortLabel: 'VIB STG1 X',
-    unit: 'mils',
-    category: 'mechanical',
-  },
-  'VIB-STG1Y-AI-MS': {
-    label: 'Stage 1 Vibration Y-Axis',
-    shortLabel: 'VIB STG1 Y',
-    unit: 'mils',
-    category: 'mechanical',
-  },
+function meta(
+  label: string,
+  shortLabel: string,
+  unit: string,
+  category: Category,
+): TagMeta {
+  return { label, shortLabel, unit, category }
 }
 
+export const TAG_CATALOG: Record<string, TagMeta> = {
+  'AIR-TEMP-STG1-AI-MS':
+    meta('Air Temperature Stage 1', 'AIR TEMP 1', '°C', 'temperature'),
+
+  'AIR-TEMP-STG2-AI-MS':
+    meta('Air Temperature Stage 2', 'AIR TEMP 2', '°C', 'temperature'),
+
+  'BRG-DE-TEMP-AI-MS':
+    meta('Bearing DE Temperature', 'BRG DE TEMP', '°C', 'mechanical'),
+
+  'BRG-NDE-TEMP-AI-MS':
+    meta('Bearing NDE Temperature', 'BRG NDE TEMP', '°C', 'mechanical'),
+
+  'DSCH-PRESSURE-STG1-AI-MS':
+    meta('Discharge Pressure Stage 1', 'PRESS STG 1', 'psi', 'pressure'),
+
+  'DSCH-PRESSURE-STG2-AI-MS':
+    meta('Discharge Pressure Stage 2', 'PRESS STG 2', 'psi', 'pressure'),
+
+  'CT-INPUT-AI-MS':
+    meta('CT Input Current', 'CT INPUT', 'A', 'electrical'),
+
+  'ANY-COMPRESSOR-TRIP-DI-MS':
+    meta('Any Compressor Trip Status', 'TRIP DI', 'STATE', 'status'),
+
+  'PCV57033-AI':
+    meta('Pressure Control Valve PCV-57033', 'PCV 57033', '%', 'pressure'),
+
+  'PT57033A-AI':
+    meta('Pressure Transmitter PT-57033A', 'PT 57033A', 'psi', 'pressure'),
+
+  'PT57033B-AI':
+    meta('Pressure Transmitter PT-57033B', 'PT 57033B', 'psi', 'pressure'),
+
+  'PT57033C-AI':
+    meta('Pressure Transmitter PT-57033C', 'PT 57033C', 'psi', 'pressure'),
+
+  'PT57035A-AI':
+    meta('System Pressure PT-57035A', 'PT 57035A', 'psi', 'pressure'),
+
+  'TT50733B-AI':
+    meta('Temperature Transmitter TT-50733B', 'TT 50733B', '°C', 'temperature'),
+
+  'TT57033A-AI':
+    meta('Temperature Transmitter TT-57033A', 'TT 57033A', '°C', 'temperature'),
+
+  'TT57033C-AI':
+    meta('Temperature Transmitter TT-57033C', 'TT 57033C', '°C', 'temperature'),
+
+  'FI-51037-AI':
+    meta('Flow Indicator FI-51037', 'FLOW 51037', 'SCFM', 'flow'),
+
+  'FT57036-AI':
+    meta('Flow Transmitter FT-57036', 'FT 57036', 'SCFM', 'flow'),
+
+  'FT57037-AI':
+    meta('Flow Transmitter FT-57037', 'FT 57037', 'SCFM', 'flow'),
+
+  'HOT-AIR-DSCH-TEMP-AI-MS':
+    meta('Hot Air Discharge Temperature', 'HOT AIR TEMP', '°C', 'temperature'),
+
+  'I-RMS-A-AI-MS':
+    meta('Motor Current Phase A (RMS)', 'I-RMS PHASE A', 'A', 'electrical'),
+
+  'I-RMS-B-AI-MS':
+    meta('Motor Current Phase B (RMS)', 'I-RMS PHASE B', 'A', 'electrical'),
+
+  'I-RMS-C-AI-MS':
+    meta('Motor Current Phase C (RMS)', 'I-RMS PHASE C', 'A', 'electrical'),
+
+  'AVERAGE MOTOR WINDING TEMPERATURE-AI':
+    meta('Average Motor Winding Temperature', 'WINDING TEMP', '°C', 'temperature'),
+
+  'B61-AI':
+    meta('Sensor Reading B61', 'TAG B61', 'RAW', 'mechanical'),
+
+  'B62-AI':
+    meta('Sensor Reading B62', 'TAG B62', 'RAW', 'mechanical'),
+
+  'B64-AI':
+    meta('Sensor Reading B64', 'TAG B64', 'RAW', 'mechanical'),
+
+  'FI-51040-AI':
+    meta('Flow Indicator FI-51040', 'FLOW 51040', 'SCFM', 'flow'),
+
+  'MOTOR-OUTBOARD-BRG-TEMP-AI':
+    meta('Motor Outboard Bearing Temp', 'OUTBOARD BRG', '°F', 'mechanical'),
+
+  'MOTOR-STATOR-TEMP-AI-MS':
+    meta('Motor Stator Temperature', 'STATOR TEMP', '°F', 'temperature'),
+
+  'OIL-PRESSURE-AI-MS':
+    meta('Lube Oil Pressure', 'OIL PRESS', 'psi', 'pressure'),
+
+  'READY-DI-MS':
+    meta('Compressor Ready Status (DI)', 'READY DI', 'STATE', 'status'),
+
+  'SYSTEM-PRESSURE-AI-MS':
+    meta('System Discharge Pressure', 'SYS PRESS', 'psi', 'pressure'),
+
+  'VIB-STG1X-AI-MS':
+    meta('Stage 1 Vibration X-Axis', 'VIB STG1 X', 'mils', 'mechanical'),
+
+  'VIB-STG1Y-AI-MS':
+    meta('Stage 1 Vibration Y-Axis', 'VIB STG1 Y', 'mils', 'mechanical'),
+}
+
+const STANDARD_HIGHLIGHTS = [
+  'AIR-TEMP-STG1-AI-MS',
+  'DSCH-PRESSURE-STG2-AI-MS',
+  'CT-INPUT-AI-MS',
+]
+
 const UNIT_CARD_PRIORITY: Record<number, string[]> = {
-  2: ['AIR-TEMP-STG1-AI-MS', 'DSCH-PRESSURE-STG2-AI-MS', 'CT-INPUT-AI-MS'],
+  2: STANDARD_HIGHLIGHTS,
   3: ['TT57033A-AI', 'PT57035A-AI', 'PT57033C-AI'],
   4: ['FT57036-AI', 'I-RMS-A-AI-MS', 'I-RMS-B-AI-MS'],
   7: ['FI-51040-AI', 'I-RMS-A-AI-MS', 'I-RMS-B-AI-MS'],
-  10: ['MOTOR-STATOR-TEMP-AI-MS', 'SYSTEM-PRESSURE-AI-MS', 'OIL-PRESSURE-AI-MS'],
-  14: ['AIR-TEMP-STG1-AI-MS', 'DSCH-PRESSURE-STG2-AI-MS', 'CT-INPUT-AI-MS'],
+  10: [
+    'MOTOR-STATOR-TEMP-AI-MS',
+    'SYSTEM-PRESSURE-AI-MS',
+    'OIL-PRESSURE-AI-MS',
+  ],
+  14: STANDARD_HIGHLIGHTS,
 }
 
-const fields = [
+const STANDARD_FIELDS = [
   ['airTempStg1', 'AIR-TEMP-STG1-AI-MS'],
   ['airTempStg2', 'AIR-TEMP-STG2-AI-MS'],
   ['bearingDeTemp', 'BRG-DE-TEMP-AI-MS'],
@@ -315,6 +221,7 @@ const fields = [
   ['pressureStg1', 'DSCH-PRESSURE-STG1-AI-MS'],
   ['pressureStg2', 'DSCH-PRESSURE-STG2-AI-MS'],
   ['ctInput', 'CT-INPUT-AI-MS'],
+  ['motorWindingTemp', 'AVERAGE MOTOR WINDING TEMPERATURE-AI'],
 ] as const
 
 function emptyUnit(number: number): FleetUnit {
@@ -322,10 +229,10 @@ function emptyUnit(number: number): FleetUnit {
     id: `SAC#${number}`,
     status: 'Unknown',
     acquisitionActive: false,
-    pressureStg1: null,
-    pressureStg2: null,
     airTempStg1: null,
     airTempStg2: null,
+    pressureStg1: null,
+    pressureStg2: null,
     bearingDeTemp: null,
     bearingNdeTemp: null,
     ctInput: null,
@@ -336,30 +243,33 @@ function emptyUnit(number: number): FleetUnit {
   }
 }
 
-function isObject(
-  value: unknown,
-): value is Record<string, unknown> {
+function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'string')
+  )
 }
 
 function isImportItem(value: unknown): value is ImportItem {
   return (
     isObject(value) &&
+    typeof value.id === 'number' &&
     Number.isSafeInteger(value.id) &&
-    Number(value.id) > 0 &&
+    value.id > 0 &&
     typeof value.fileName === 'string' &&
     typeof value.assetName === 'string' &&
-    Array.isArray(value.tags) &&
-    value.tags.every((tag) => typeof tag === 'string')
+    isStringArray(value.tags)
   )
 }
 
-function isHistoryResponse(
-  value: unknown,
-): value is HistoryResponse {
+function isHistoryResponse(value: unknown): value is HistoryResponse {
   if (
     !isObject(value) ||
-    !Array.isArray(value.tags) ||
+    !isStringArray(value.tags) ||
     !Array.isArray(value.data)
   ) {
     return false
@@ -367,130 +277,121 @@ function isHistoryResponse(
 
   const tagCount = value.tags.length
 
-  return (
-    value.tags.every((tag) => typeof tag === 'string') &&
-    value.data.every(
-      (sample) =>
-        isObject(sample) &&
-        typeof sample.sourceTime === 'string' &&
-        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(
-          sample.sourceTime,
-        ) &&
-        Array.isArray(sample.values) &&
-        sample.values.length === tagCount &&
-        sample.values.every(
-          (reading) =>
-            reading === null ||
-            (typeof reading === 'number' &&
-              Number.isFinite(reading)),
-        ),
-    )
+  return value.data.every((row: unknown) =>
+    isObject(row) &&
+    typeof row.sourceTime === 'string' &&
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(row.sourceTime) &&
+    Array.isArray(row.values) &&
+    row.values.length === tagCount &&
+    row.values.every((v: unknown) =>
+      v === null || (typeof v === 'number' && Number.isFinite(v)),
+    ),
   )
 }
 
 function identifyUnit(tags: string[]): number | null {
-  const numbers = new Set(
-    tags
-      .map((tag) => /^U-SAC(\d+)-/i.exec(tag.trim())?.[1])
-      .filter((number): number is string => Boolean(number))
-      .map(Number),
-  )
+  const ids = new Set<number>()
 
-  if (numbers.size !== 1) return null
+  for (const tag of tags) {
+    const match = /^U-SAC(\d+)-/i.exec(tag.trim())
+    if (match) ids.add(Number(match[1]))
+  }
 
-  const number = [...numbers][0]
+  if (ids.size !== 1) return null
 
-  return number >= 1 && number <= 15 ? number : null
+  const [id] = ids
+  return id >= 1 && id <= 15 ? id : null
 }
 
 async function request(
-  endpoint: string,
+  path: string,
   signal: AbortSignal,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     signal,
     cache: 'no-store',
   })
 
   if (!response.ok) {
-    throw new Error(
-      `API mengembalikan HTTP ${response.status}.`,
-    )
+    throw new Error(`API mengembalikan HTTP ${response.status}.`)
   }
 
   return response.json()
 }
 
 function mapSample(
-  unitNumber: number,
+  number: number,
   tags: string[],
   sample: Sample,
+  catalog: InstrumentCatalog,
 ): FleetUnit {
-  const unit = emptyUnit(unitNumber)
-
+  const unit = emptyUnit(number)
   unit.sourceTime = sample.sourceTime
 
-  const prefixRegex = new RegExp(`^U-SAC${unitNumber}-`, 'i')
+  const prefix = new RegExp(`^U-SAC${number}-`, 'i')
 
-  const customParameters: DynamicParameter[] = tags.map((rawTag, idx) => {
-    const cleanTag = rawTag.trim()
-    const suffix = cleanTag.replace(prefixRegex, '').toUpperCase()
-    const meta = TAG_CATALOG[suffix] ?? {
-      label: suffix.replace(/-/g, ' '),
-      shortLabel: suffix.slice(0, 12),
-      unit: 'RAW',
-      category: 'mechanical' as const,
-    }
-
-    const rawVal = sample.values[idx]
-    const validVal =
-      typeof rawVal === 'number' && Number.isFinite(rawVal) && rawVal > -9000
-        ? rawVal
-        : null
+  const parameters: DynamicParameter[] = tags.map((rawTag, index) => {
+    const tag = rawTag.trim()
+    const suffix = tag.replace(prefix, '').toUpperCase()
+    const info = getInstrumentMeta(tag, catalog)
+    const raw = sample.values[index]
 
     return {
-      tag: cleanTag,
+      ...info,
+      tag,
       suffix,
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      unit: meta.unit,
-      category: meta.category,
-      value: validVal,
+      value:
+        typeof raw === 'number' &&
+        Number.isFinite(raw) &&
+        raw > -9000
+          ? raw
+          : null,
     }
   })
 
   unit.customParameters =
-    unitNumber === 2 || unitNumber === 14
-      ? customParameters.filter(
+    number === 2 || number === 14
+      ? parameters.filter(
           (p) => p.suffix !== 'AVERAGE MOTOR WINDING TEMPERATURE-AI',
         )
-      : customParameters
+      : parameters
 
-  const prioritySuffixes = UNIT_CARD_PRIORITY[unitNumber] ?? []
+  const bySuffix = new Map(
+    parameters.map((p) => [p.suffix, p] as const),
+  )
+
   const highlights: DynamicParameter[] = []
 
-  for (const sfx of prioritySuffixes) {
-    const found = customParameters.find((p) => p.suffix === sfx)
-    if (found) highlights.push(found)
+  for (const suffix of UNIT_CARD_PRIORITY[number] ?? []) {
+    const parameter = bySuffix.get(suffix)
+    if (parameter) highlights.push(parameter)
   }
 
-  for (const param of customParameters) {
+  for (const parameter of unit.customParameters) {
     if (highlights.length >= 3) break
-    if (!highlights.includes(param)) {
-      highlights.push(param)
-    }
+    if (!highlights.includes(parameter)) highlights.push(parameter)
   }
 
   unit.cardHighlights = highlights.slice(0, 3)
 
-  for (const [field, suffix] of fields) {
-    const match = customParameters.find((p) => p.suffix === suffix)
-    unit[field] = match ? match.value : null
+  for (const [field, suffix] of STANDARD_FIELDS) {
+    unit[field] = bySuffix.get(suffix)?.value ?? null
   }
 
-  unit.acquisitionActive = customParameters.some((p) => p.value !== null)
-
+  unit.acquisitionActive = parameters.some((p) => p.value !== null)
   return unit
+}
+
+const EMPTY_IMPORTS: LoadedImport[] = []
+
+function initialState(): LoadState {
+  return {
+    key: '',
+    loading: false,
+    error: '',
+    notes: [],
+    imports: [],
+  }
 }
 
 export function useHistoricalFleet(
@@ -499,30 +400,18 @@ export function useHistoricalFleet(
   time: string,
 ) {
   const [reload, setReload] = useState(0)
-
-  const [state, setState] = useState<LoadState>({
-    key: '',
-    loading: false,
-    error: '',
-    notes: [],
-    imports: [],
-  })
-
+  const pims = useInstrumentCatalog(enabled, reload)
+  const [state, setState] = useState<LoadState>(initialState)
   const key = `${day}:${reload}`
 
   useEffect(() => {
     if (!enabled) {
-      setState({
-        key: '',
-        loading: false,
-        error: '',
-        notes: [],
-        imports: [],
-      })
+      setState(initialState())
       return
     }
 
     const controller = new AbortController()
+    const { signal } = controller
 
     setState({
       key,
@@ -534,66 +423,51 @@ export function useHistoricalFleet(
 
     async function load() {
       try {
-        const response = await request(
-          '/api/history/imports',
-          controller.signal,
-        )
+        const response = await request('/api/history/imports', signal)
 
         if (
           !isObject(response) ||
           !Array.isArray(response.data) ||
           !response.data.every(isImportItem)
         ) {
-          throw new Error(
-            'Format daftar impor API tidak sesuai.',
-          )
+          throw new Error('Format daftar impor API tidak sesuai.')
         }
 
-        const grouped = new Map<number, ImportItem[]>()
+        const jobs: { unit: number; item: ImportItem }[] = []
         const notes: string[] = []
+        const counts = new Map<number, number>()
 
         for (const item of response.data) {
           const unit = identifyUnit(item.tags)
 
           if (unit === null) {
-            notes.push(
-              `Impor #${item.id} tidak memiliki identitas unit yang jelas.`,
-            )
+            notes.push(`Impor #${item.id}: identitas unit tidak jelas.`)
             continue
           }
 
-          grouped.set(unit, [
-            ...(grouped.get(unit) ?? []),
-            item,
-          ])
+          jobs.push({ unit, item })
+          counts.set(unit, (counts.get(unit) ?? 0) + 1)
         }
 
-        const jobs = [...grouped.entries()].flatMap(
-          ([unit, items]) => {
-            if (items.length > 1) {
-              notes.push(
-                `SAC#${unit}: ${items.length} impor. Pada timestamp yang sama, ID impor terbesar diprioritaskan.`,
-              )
-            }
-
-            return items.map((item) => ({ unit, item }))
-          },
-        )
+        for (const [unit, count] of counts) {
+          if (count > 1) {
+            notes.push(
+              `SAC#${unit}: ${count} impor. Jika waktu sama, ID impor terbesar diprioritaskan.`,
+            )
+          }
+        }
 
         const loaded: LoadedImport[] = []
         let cursor = 0
 
         async function worker() {
-          while (
-            cursor < jobs.length &&
-            !controller.signal.aborted
-          ) {
+          while (!signal.aborted && cursor < jobs.length) {
             const job = jobs[cursor++]
 
             try {
               const result = await request(
                 `/api/history/${job.item.id}/samples?day=${encodeURIComponent(day)}`,
-                controller.signal,
+                signal,
               )
 
               if (
@@ -605,12 +479,9 @@ export function useHistoricalFleet(
                 )
               }
 
-              loaded.push({
-                ...job,
-                history: result,
-              })
+              loaded.push({ ...job, history: result })
             } catch (error) {
-              if (controller.signal.aborted) return
+              if (signal.aborted) return
 
               loaded.push({
                 ...job,
@@ -626,11 +497,13 @@ export function useHistoricalFleet(
         await Promise.all(
           Array.from(
             { length: Math.min(3, jobs.length) },
-            worker,
+            () => worker(),
           ),
         )
 
-        if (!controller.signal.aborted) {
+        if (!signal.aborted) {
+          loaded.sort((a, b) => b.item.id - a.item.id)
+
           setState({
             key,
             loading: false,
@@ -640,7 +513,7 @@ export function useHistoricalFleet(
           })
         }
       } catch (error) {
-        if (!controller.signal.aborted) {
+        if (!signal.aborted) {
           setState({
             key,
             loading: false,
@@ -656,77 +529,77 @@ export function useHistoricalFleet(
     }
 
     void load()
-
     return () => controller.abort()
   }, [enabled, day, key])
 
   const current = enabled && state.key === key
-  const imports = current ? state.imports : []
-
-  const sourceTime = `${day} ${
-    time.length === 5 ? `${time}:00` : time
-  }`
-
-  const loading =
-    enabled && (!current || state.loading)
-
+  const imports = current ? state.imports : EMPTY_IMPORTS
+  const loading = enabled && (!current || state.loading)
   const error = current ? state.error : ''
 
-  const compressors: FleetUnit[] = Array.from(
-    { length: 15 },
-    (_, index) => {
-      const number = index + 1
+  const sourceTime =
+    `${day} ${time.length === 5 ? `${time}:00` : time}`
 
-      const candidates = imports
-        .filter((item) => item.unit === number)
-        .sort((a, b) => b.item.id - a.item.id)
-
-      for (const candidate of candidates) {
-        const history = candidate.history
-
-        if (!history) continue
-
-        const sample = history.data.find(
-          (item) => item.sourceTime === sourceTime,
+  const compressors = useMemo<FleetUnit[]>(
+    () =>
+      ACTIVE_UNIT_NUMBERS.map((number) => {
+        const candidates = imports.filter(
+          (entry) => entry.unit === number,
         )
 
-        if (!sample) continue
+        const partialFailure = candidates.some(
+          (entry) => Boolean(entry.error),
+        )
 
-        return {
-          ...mapSample(number, history.tags, sample),
-          sourceFile: candidate.item.fileName,
-          importId: candidate.item.id,
-          issue: candidates.some((item) => item.error)
-            ? 'Sebagian impor unit gagal dimuat.'
-            : undefined,
+        for (const candidate of candidates) {
+          const history = candidate.history
+          if (!history) continue
+
+          const sample = history.data.find(
+            (row) => row.sourceTime === sourceTime,
+          )
+
+          if (!sample) continue
+
+          return {
+            ...mapSample(number, history.tags, sample, pims.catalog),
+            sourceFile: candidate.item.fileName,
+            importId: candidate.item.id,
+            issue: partialFailure
+              ? 'Sebagian impor unit gagal dimuat.'
+              : undefined,
+          }
         }
-      }
 
-      return {
-        ...emptyUnit(number),
-        issue: loading
-          ? 'Memuat data…'
-          : error
-            ? 'Sumber data tidak dapat dimuat.'
-            : candidates.some((item) => item.error)
-              ? 'Gagal memuat data unit.'
-              : candidates.length
-                ? 'Tidak ada sampel pada waktu pilihan.'
-                : 'Belum ada impor untuk unit ini.',
-      }
-    },
+        const unit = emptyUnit(number)
+
+        if (loading) {
+          unit.issue = 'Memuat data…'
+        } else if (error) {
+          unit.issue = 'Sumber data tidak dapat dimuat.'
+        } else if (partialFailure) {
+          unit.issue = 'Gagal memuat data unit.'
+        } else if (candidates.length > 0) {
+          unit.issue = 'Tidak ada sampel pada waktu pilihan.'
+        } else {
+          unit.issue = 'Belum ada impor untuk unit ini.'
+        }
+
+        return unit
+      }),
+    [imports, sourceTime, loading, error, pims.catalog],
   )
 
-  const warnings = imports.flatMap((item) => {
-    if (item.error) {
-      return [
-        `SAC#${item.unit}, impor #${item.item.id}: ${item.error}`,
-      ]
+  const warnings = imports.flatMap((entry) => {
+    const prefix = `SAC#${entry.unit}, impor #${entry.item.id}`
+
+    if (entry.error) {
+      return [`${prefix}: ${entry.error}`]
     }
 
-    if (item.history?.truncated) {
+    if (entry.history?.truncated) {
       return [
-        `Impor #${item.item.id}: respons dibatasi 1.440 sampel. Sebagian waktu mungkin tidak tersedia.`,
+        `${prefix}: respons dibatasi 1.440 sampel. Sebagian waktu mungkin tidak tersedia.`,
       ]
     }
 
@@ -735,10 +608,14 @@ export function useHistoricalFleet(
 
   return {
     compressors,
+    imports,
     sourceTime,
     loading,
     error,
-    warnings,
+    warnings: [
+      ...warnings,
+      ...(pims.error ? [pims.error] : []),
+    ],
     notes: current ? state.notes : [],
     refresh: () => setReload((value) => value + 1),
   }

@@ -1,10 +1,16 @@
 import cors from 'cors'
 import express from 'express'
 import { pool } from './db.js'
+import { registerApiDocs } from './apiDocs.js'
+import importRoutes from './importRoutes.js'
+import catalogRoutes from './catalogRoutes.js'
+import trendRoutes from './trendRoutes.js'
 
 const app = express()
 
-app.disable('x-powered-by')
+app.disable('x-powered-by') 
+registerApiDocs(app)
+
 
 const allowedOrigins = new Set([
   'http://localhost:5173',
@@ -26,9 +32,13 @@ app.use(
       }
       return callback(null, true)
     },
-    methods: ['GET'],
+    methods: ['GET', 'POST'],
   }),
 )
+
+app.use('/api/imports', importRoutes)
+app.use('/api/catalog', catalogRoutes)
+app.use('/api/trends', trendRoutes)
 
 app.get('/', (_req, res) => {
   res.json({
