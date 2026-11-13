@@ -699,58 +699,6 @@ export default function HistoricalData({
             </div>
           </div>
         </section>
-
-        <aside
-          className="hd-card hd-guide"
-          aria-labelledby="hd-guide-title"
-        >
-          <span className="hd-eyebrow">
-            PANDUAN SINGKAT
-          </span>
-          <h3 id="hd-guide-title">
-            Satu unit, beberapa file
-          </h3>
-          <p>
-            Data yang terbagi menjadi beberapa bagian
-            dapat dipilih sekaligus.
-          </p>
-
-          <div className="hd-example">
-            <strong>Contoh: Centac 15</strong>
-            <span>sac15_pt1.xls</span>
-            <span>sac15_pt2.xls</span>
-            <span>sac15_pt3.xls</span>
-            <small>
-              Digabungkan berdasarkan waktu dan tag sensor.
-            </small>
-          </div>
-
-          <ul>
-            <li>
-              Pilih file dari satu kompresor untuk setiap
-              proses impor.
-            </li>
-            <li>
-              Sesuaikan format tanggal dengan isi file
-              sumber.
-            </li>
-            <li>
-              Periksa unit, periode, dan daftar sensor
-              sebelum menyimpan.
-            </li>
-          </ul>
-
-          <div className="hd-guide-note">
-            <strong>
-              Kapan data masuk ke dashboard?
-            </strong>
-            <p>
-              Setelah disimpan, buka Overview atau Process
-              &amp; trends dan pilih tanggal sesuai periode
-              data.
-            </p>
-          </div>
-        </aside>
       </div>
 
       {busy && (

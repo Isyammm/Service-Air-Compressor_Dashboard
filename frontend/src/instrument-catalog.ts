@@ -59,9 +59,10 @@ const UNIT_ALIASES: Record<string, string> = {
   psig: 'psi',
   psia: 'psi',
   bar: 'bar',
-  inh2o: 'inH2O',
+  inh2o: 'inH₂O',
+  'inh₂o': 'inH₂O',
   scfm: 'SCFM',
-  cfm: 'SCFM',
+  cfm: 'CFM',
   gpm: 'GPM',
   mils: 'mils',
   mil: 'mils',
@@ -100,8 +101,18 @@ export function inferEngineeringUnit(
     return '°F'
   }
 
-  if (/\bWATER[-_ ]?FLOW\b|\bCOOLING[-_ ]?WATER\b/.test(text)) {
-    return 'GPM'
+    if (/\bWATER[-_ ]?FLOW\b|\bCOOLING[-_ ]?WATER\b/.test(text)) {
+    return 'CFM'
+  }
+
+  if (
+    /\bINLET[-_ ](?:AIR[-_ ])?FILTER\b|\bSUCTION[-_ ]AIR[-_ ]FILTER\b/.test(text)
+  ) {
+    return 'inH₂O'
+  }
+
+  if (/\bOIL[-_ ]FILTER\b/.test(text)) {
+    return 'psi'
   }
 
   if (/\bFLOW\b|\bSCFM\b|^FI-?\d|[-_]FI-?\d|^FT\d|[-_]FT\d/.test(text)) {

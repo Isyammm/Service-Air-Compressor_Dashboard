@@ -1627,3 +1627,358 @@
     transition: none !important;
   }
 }
+/* Historical Data — layout tanpa panel panduan */
+
+.hd-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  gap: 20px;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* Hilangkan kolom kosong bekas panduan */
+.hd-page .hd-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  gap: 0;
+}
+
+.hd-page .hd-layout > .hd-card {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+/* Tahapan impor */
+.hd-page .hd-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+
+  width: 100%;
+  margin: 0;
+  padding: 7px;
+
+  list-style: none;
+  background: #101b29;
+  border: 1px solid #293b50;
+  border-radius: 10px;
+}
+
+.hd-page .hd-steps li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  min-width: 0;
+  padding: 10px 12px;
+
+  border: 1px solid transparent;
+  border-radius: 7px;
+
+  color: #afbed0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hd-page .hd-steps li > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+
+  width: 28px;
+  height: 28px;
+
+  background: #19283a;
+  border: 1px solid #40536a;
+  border-radius: 50%;
+  color: #d4e0ec;
+}
+
+.hd-page .hd-steps li[aria-current="step"] {
+  background: #17382f;
+  border-color: #2f715b;
+  color: #e5fff3;
+}
+
+.hd-page .hd-steps li.is-active > span {
+  background: #215741;
+  border-color: #47ad80;
+  color: #d6ffeb;
+}
+
+/* Kontainer form */
+.hd-page .hd-card {
+  background: #131f2e;
+  border: 1px solid #2c3e53;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+}
+
+.hd-page .hd-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding: 20px 24px;
+  background: #162334;
+  border-bottom: 1px solid #2c3e53;
+}
+
+.hd-page .hd-eyebrow {
+  margin-bottom: 5px;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: #77d7ba;
+}
+
+.hd-page .hd-card-header h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.hd-page .hd-card-header p {
+  margin-top: 6px;
+  color: #b3c2d4;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.hd-page .hd-card-body {
+  padding: 22px 24px;
+}
+
+/* Area unggah */
+.hd-page .hd-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 210px;
+  padding: 22px 18px;
+
+  background: #0e1b29;
+  border: 1px dashed #4b6982;
+  border-radius: 10px;
+}
+
+.hd-page .hd-upload-icon {
+  display: grid;
+  place-items: center;
+
+  width: 42px;
+  height: 42px;
+  margin-bottom: 3px;
+
+  background: #173b31;
+  border: 1px solid #30654f;
+  border-radius: 10px;
+  color: #6ee0b5;
+}
+
+.hd-page .hd-upload-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.hd-page .hd-dropzone > strong {
+  color: #f0f5fb;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.hd-page .hd-dropzone > span:not(.hd-upload-icon):not(.hd-select-file) {
+  color: #b5c5d7;
+  font-size: 13px;
+}
+
+.hd-page .hd-dropzone > small {
+  margin-top: 3px;
+  color: #a4b7cc;
+  font-size: 12px;
+}
+
+.hd-page .hd-select-file {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 40px;
+  margin-top: 5px;
+  padding: 8px 20px;
+
+  background: #245843;
+  border: 1px solid #438766;
+  border-radius: 7px;
+
+  color: #effff6;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hd-page .hd-dropzone:not(.is-disabled):hover,
+.hd-page .hd-dropzone.is-dragging {
+  background: #132c29;
+  border-color: #6adbb2;
+}
+
+/* Format tanggal: label dan pilihan sejajar */
+.hd-page .hd-date-field {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 420px);
+  align-items: center;
+  gap: 8px 20px;
+
+  margin-top: 18px;
+  padding: 16px 18px;
+
+  background: #101b29;
+  border: 1px solid #2b3d52;
+  border-radius: 9px;
+}
+
+.hd-page .hd-date-field > label {
+  margin: 0;
+  color: #e4edf7;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hd-page .hd-date-field select {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 12px;
+
+  background: #19283a;
+  border: 1px solid #49627b;
+  border-radius: 7px;
+
+  color: #f1f6fc;
+  color-scheme: dark;
+  font-size: 13px;
+}
+
+.hd-page .hd-date-field > small {
+  grid-column: 2;
+  color: #adbed2;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Baris tombol */
+.hd-page .hd-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  margin-top: 18px;
+  padding-top: 18px;
+
+  border-top: 1px solid #2b3d52;
+}
+
+.hd-page .hd-actions > p {
+  margin: 0;
+  color: #adbed2;
+  font-size: 12px;
+}
+
+.hd-page .hd-button {
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.hd-page .hd-primary {
+  background: #56d4a7;
+  border: 1px solid #76e5bb;
+  color: #09291d;
+}
+
+.hd-page .hd-primary:hover:not(:disabled) {
+  background: #78e5bd;
+  border-color: #9bf0d0;
+}
+
+.hd-page .hd-button:disabled {
+  background: #253447;
+  border: 1px solid #3b4d63;
+  color: #a9b8ca;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Navigasi keyboard */
+.hd-page button:focus-visible,
+.hd-page select:focus-visible,
+.hd-page .hd-dropzone:focus-within {
+  outline: 2px solid #83eac7;
+  outline-offset: 3px;
+}
+
+/* Tablet dan ponsel */
+@media (max-width: 760px) {
+  .hd-page .hd-card-header,
+  .hd-page .hd-card-body {
+    padding: 18px;
+  }
+
+  .hd-page .hd-date-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .hd-page .hd-date-field > small {
+    grid-column: 1;
+  }
+
+  .hd-page .hd-steps li {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hd-page .hd-card-header {
+    gap: 10px;
+  }
+
+  .hd-page .hd-card-header h3 {
+    font-size: 18px;
+  }
+
+  .hd-page .hd-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hd-page .hd-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .hd-page .hd-actions .hd-button {
+    width: 100%;
+  }
+}

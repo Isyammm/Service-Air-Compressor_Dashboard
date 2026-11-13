@@ -5,6 +5,7 @@ import UnitTrends from './UnitTrends'
 import { useDemoData } from './useDemoData'
 import { useHistoricalFleet } from './useHistoricalFleet'
 import { useSystemHistory } from './useSystemHistory'
+import ParameterAlarm from './ParameterAlarm'
 import {
   ACTIVE_UNIT_NUMBERS,
   TOTAL_UNITS,
@@ -399,7 +400,7 @@ export default function App() {
         : '',
     },
     {
-      title: 'Compressor Fleet Status',
+      title: 'Compressor Operating Status',
       value: demoMode && snapshot
         ? `${counts.Running} / ${TOTAL_UNITS}`
         : '—',
@@ -852,7 +853,7 @@ export default function App() {
               <section className="panel">
                 <div className="panel-header fleet-panel-header">
                   <div>
-                    <h3>Service Air Compressor Fleet ({TOTAL_UNITS} Units)</h3>
+                    <h3>Service Air Compressor Overview ({TOTAL_UNITS} Units)</h3>
                     <p className="panel-subtitle">
                       {historicalMode
                         ? `HISTORICAL · ${history.sourceTime}`
@@ -1016,7 +1017,7 @@ export default function App() {
                     className="secondary-button"
                     onClick={() => setActiveMenu(menus[0])}
                   >
-                    ← Overview Fleet
+                    ← Compressor Overview
                   </button>
 
                   <button
@@ -1154,6 +1155,11 @@ export default function App() {
                                   {parameter.unit || 'Belum ditentukan'}
                                 </span>
                               </div>
+
+                              <ParameterAlarm
+                                parameter={parameter}
+                                enabled={historicalMode}
+                              />
 
                               <div className="telemetry-footer-status">
                                 <span>
