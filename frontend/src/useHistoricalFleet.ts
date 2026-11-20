@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Compressor, CompressorStatus } from './useDemoData'
+import type { Compressor, CompressorStatus } from './compressorTypes'
 import { ACTIVE_UNIT_NUMBERS } from './fleetConfig'
 import {
   getInstrumentMeta,
@@ -16,6 +16,7 @@ type Category =
   | 'electrical'
   | 'flow'
   | 'status'
+  | 'other'
 
 type TagMeta = {
   label: string

@@ -616,11 +616,7 @@ function findLimits(parameter: Parameter): {
   return { limits, message: '' }
 }
 
-export default function ParameterAlarm({
-  parameter,
-  enabled = true,
-}: Props) {
-  if (!enabled) return null
+export function evaluateParameterAlarm(parameter: Parameter) {
 
   const result = findLimits(parameter)
   const limits = result.limits
@@ -751,6 +747,23 @@ export default function ParameterAlarm({
     'Evaluasi nilai sampel; bukan konfirmasi status operasi mesin.',
   )
 
+  return { text, color, details }
+}
+
+export function parameterAlarmStyle(parameter: Parameter, enabled = true) {
+  if (!enabled) return undefined
+  const { color } = evaluateParameterAlarm(parameter)
+  return {
+    color,
+    background: `${color}12`,
+    border: `1px solid ${color}66`,
+    borderLeft: `3px solid ${color}`,
+  }
+}
+
+export default function ParameterAlarm({ parameter, enabled = true }: Props) {
+  if (!enabled) return null
+  const { text, color, details } = evaluateParameterAlarm(parameter)
   return (
     <span
       title={details.join('\n')}

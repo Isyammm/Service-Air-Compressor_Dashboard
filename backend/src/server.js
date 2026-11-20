@@ -1,3 +1,4 @@
+import { liveSnapshot } from './live.js'
 import cors from 'cors'
 import express from 'express'
 import { pool } from './db.js'
@@ -30,12 +31,13 @@ app.use(
       if (!origin || allowedOrigins.has(origin)) {
         return callback(null, true)
       }
-      return callback(null, true)
+      return callback(new Error('Origin tidak diizinkan'))
     },
     methods: ['GET', 'POST'],
   }),
 )
 
+app.get('/api/live/snapshot', liveSnapshot)
 app.use('/api/imports', importRoutes)
 app.use('/api/catalog', catalogRoutes)
 app.use('/api/trends', trendRoutes)
@@ -350,7 +352,7 @@ const server = app.listen(port, host, () => {
   console.log(`Alamat API : http://${host}:${port}`)
   console.log(`Health     : http://${host}:${port}/api/health`)
   console.log(`Frontend   : ${frontendOrigin}`)
-  console.log(`Sumber data: database historis, bukan data Live.`)
+  console.log(`Historical tersedia; Live mengikuti konfigurasi sumber.`)
 })
 
 server.on('error', (error) => {

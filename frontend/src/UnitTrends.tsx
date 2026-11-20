@@ -16,9 +16,7 @@ type Props = {
   mode?: 'historical' | 'live'
 
   // Tetap menerima properti lama dari App.tsx.
-  demo?: boolean
   imports?: unknown
-  snapshots?: unknown
   loading?: boolean
   error?: string
 }

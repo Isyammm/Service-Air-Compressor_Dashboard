@@ -21,6 +21,7 @@ type Props = {
   start: number
   end: number
   title: string
+  timeZone?: string
 }
 
 type Hover = {
@@ -43,7 +44,8 @@ function format(value: number | null | undefined) {
     : '—'
 }
 
-function timeLabel(time: number) {
+function formatChartTime(time: number, timeZone?: string) {
+  if (timeZone) return new Intl.DateTimeFormat("sv-SE", {timeZone, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"}).format(time)
   return new Date(time)
     .toISOString()
     .slice(0, 19)
@@ -78,7 +80,9 @@ function ChartContent({
   start,
   end,
   title,
+  timeZone,
 }: Props) {
+  const timeLabel = (time: number) => formatChartTime(time, timeZone)
   const plotRef = useRef<HTMLDivElement>(null)
 
   const [view, setView] = useState({ start, end })

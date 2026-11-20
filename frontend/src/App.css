@@ -2817,3 +2817,71 @@ select option {
   color: #ffffff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
+
+/* Compact header and historical time controls */
+.topbar { padding: 16px 28px; }
+.topbar-title-wrap { min-width: 0; }
+.topbar h1 { overflow-wrap: break-word; }
+.statusbar { padding-top: 10px; padding-bottom: 10px; }
+.page-heading { margin-bottom: 16px; }
+.history-controls { padding: 18px 20px; margin-bottom: 20px; border: 1px solid var(--border-medium); border-radius: 12px; }
+.history-toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px 16px; }
+.history-toolbar > label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.history-toolbar input, .history-toolbar select, .history-toolbar > button { min-height: 42px; }
+.history-toolbar > [role="status"] { align-self: center; font-size: 12px; line-height: 1.5; color: #b8c9dc; }
+.history-help { margin: 14px 0 0; font-size: 12px; line-height: 1.6; color: #a9bdd1; }
+.history-toolbar :is(input, select, button):focus-visible { outline: 2px solid #36c9b5; outline-offset: 3px; }
+@media (max-width: 700px) {
+  .topbar { padding: 16px; flex-wrap: wrap; }
+  .history-controls { padding: 16px; }
+  .history-toolbar > [role="status"] { flex-basis: 100%; }
+}
+/* Ritme ruang dan keterbacaan ringkasan */
+.metrics { gap: 16px; margin-bottom: 24px; }
+.metric-card { min-height: 140px; padding: 20px; }
+.metric-card > h3, .kpi-header h3 { font-size: 13px; line-height: 1.45; }
+.metric-card .kpi-reading { font-variant-numeric: tabular-nums; }
+.page-heading h1, .page-heading h2 { line-height: 1.25; letter-spacing: -.015em; }
+
+/* Filter tetap mudah ditemukan dan dioperasikan */
+.fleet-panel-header { align-items: flex-start; padding: 20px 22px; gap: 16px 24px; }
+.fleet-controls { min-width: 0; gap: 10px; }
+.fleet-filter-pills { gap: 8px; }
+.fleet-filter-pills .fleet-pill { min-height: 38px; padding: 8px 12px; font-size: 12px; line-height: 1.25; }
+.fleet-search-wrap input, .fleet-search-wrap input:focus { width: 210px; min-height: 38px; font-size: 12px; }
+.fleet-filter-pills button:focus-visible, .fleet-search-wrap input:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+
+/* Kartu unit: warna status tetap mengikuti kelas yang sudah ada */
+.compressor-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; padding: 20px 22px 24px; }
+.compressor-grid .compressor-card { padding: 18px; min-height: 194px; }
+.compressor-grid .compressor-name { font-size: 16px; line-height: 1.35; }
+.compressor-grid .compressor-type-badge { font-size: 11px; }
+.compressor-grid .acquisition-label { font-size: 11px; line-height: 1.45; }
+.compressor-grid .equipment-status { font-size: 11px; min-height: 27px; }
+.compressor-grid .card-values { gap: 8px; margin-top: 13px; }
+.compressor-grid .val-box { min-height: 62px; padding: 9px; }
+.compressor-grid .val-label { font-size: 10px; line-height: 1.3; }
+.compressor-grid .val-unit { font-size: 10px; }
+.compressor-grid .val-number { font-size: 17px; line-height: 1.4; }
+.compressor-grid .card-footer-action { font-size: 11px; line-height: 1.4; }
+
+/* Data dan grafik tidak memerlukan animasi dekoratif */
+@media (prefers-reduced-motion: reduce) {
+  .metric-card, .compressor-grid .compressor-card, .fleet-pill { transition: none; }
+  .trip-dot, .status-trip .equipment-dot { animation: none; }
+}
+
+@media (max-width: 1100px) {
+  .fleet-controls { width: 100%; }
+  .fleet-search-wrap { margin-left: auto; }
+}
+@media (max-width: 700px) {
+  .metrics { gap: 12px; }
+  .metric-card { min-height: 120px; padding: 16px; }
+  .fleet-panel-header { padding: 16px; }
+  .fleet-controls, .fleet-filter-pills { width: 100%; }
+  .fleet-filter-pills .fleet-pill { flex: 0 0 auto; }
+  .fleet-search-wrap, .fleet-search-wrap input, .fleet-search-wrap input:focus { width: 100%; margin-left: 0; }
+  .compressor-grid { grid-template-columns: 1fr; padding: 14px; gap: 12px; }
+  .compressor-grid .compressor-card { min-height: 0; }
+}
