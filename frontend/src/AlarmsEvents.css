@@ -1,0 +1,31 @@
+.alarm-page{padding:24px;background:#101c2c;border:1px solid #30445b;border-radius:16px;color:#dce6f2}.alarm-page[hidden]{display:none}.alarm-page h2,.alarm-page h3{color:#f8fafc;margin:0 0 12px}.alarm-page h3{margin-top:28px}.alarm-page p{font-size:13px;line-height:1.65;color:#afc3d8}.alarm-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0}.alarm-metrics>div{padding:18px;border:1px solid #30445b;border-radius:10px;background:#152337}.alarm-metrics strong{display:block;font-size:28px;color:#fff}.alarm-metrics span{font-size:12px}.alarm-controls{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:20px 0}.alarm-controls select,.alarm-controls input,.alarm-page button{background:#192a3d;color:#edf4ff;border:1px solid #466078;border-radius:7px;padding:10px}.alarm-controls label{font-size:13px}.alarm-table{overflow-x:auto}.alarm-table table{width:100%;border-collapse:collapse;font-size:13px}.alarm-table th,.alarm-table td{text-align:left;padding:14px 12px;border-bottom:1px solid #30445b;vertical-align:top}.alarm-table th{color:#9eb7cd}.alarm-page pre{white-space:pre-wrap;min-width:180px;font:inherit;line-height:1.6}.alarm-page summary{cursor:pointer;margin-top:8px}.alarm-empty{padding:20px;border:1px dashed #466078;border-radius:8px}.alarm-note{border-left:3px solid #fbbf24;padding-left:12px}@media(max-width:650px){.alarm-metrics{grid-template-columns:1fr}.alarm-page{padding:16px}}
+/* Fleet-aligned alarm workspace */
+.alarm-page{background:linear-gradient(145deg,#142033,#0e1828);padding:26px}.alarm-page>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.alarm-eyebrow{display:block;color:#10b981;font-size:10px;letter-spacing:1.4px;font-weight:700;margin-bottom:10px}.alarm-mode{border:1px solid #3a506a;border-radius:20px;padding:7px 12px;font-size:10px;letter-spacing:1px;color:#a8c4df}.alarm-controls{padding:18px;background:#17263a;border:1px solid #30445b;border-radius:12px;align-items:flex-end}.alarm-controls label{display:flex;flex-direction:column;gap:8px;color:#adc3da}.alarm-controls input,.alarm-controls select{min-height:40px;color-scheme:dark}.alarm-controls>input{flex:1;min-width:180px}.alarm-controls button{min-height:40px}.alarm-metrics{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.alarm-page .alarm-metric{text-align:left;border-top:3px solid;border-radius:12px;background:#17263a;padding:18px;cursor:pointer;min-height:126px}.alarm-metric span{font-size:13px;font-weight:600;color:#c9d8e8}.alarm-metric strong{margin:10px 0;font-size:30px;font-variant-numeric:tabular-nums}.alarm-metric small{color:#91abc4;font-size:11px}.alarm-page .alarm-metric.selected{background:#23364c;outline:1px solid #809cb7}.alarm-page button:focus-visible,.alarm-page input:focus-visible,.alarm-page select:focus-visible{outline:2px solid #38bdf8;outline-offset:3px}.alarm-coverage{display:flex;flex-wrap:wrap;gap:24px;color:#9db4cb;font-size:12px;margin:20px 0}.alarm-table{border:1px solid #30445b;border-radius:12px;background:#111e30}.alarm-table table{min-width:720px}.alarm-table thead{background:#1d2e43}.alarm-table tbody tr:nth-child(even){background:#152337}.alarm-table tbody tr:hover{background:#1b2d43}.alarm-table td{line-height:1.6}.alarm-badge{display:inline-block;white-space:nowrap;border:1px solid;border-radius:5px;padding:3px 9px;background:#0c1727;font-size:11px;font-weight:700}.alarm-tag{display:block;color:#8ea8c2;font:10px monospace;margin-top:5px;overflow-wrap:anywhere}.alarm-page .alarm-empty{margin:16px}.alarm-table details{max-width:340px}.alarm-page button:disabled{opacity:.5;cursor:wait}@media(max-width:1100px){.alarm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.alarm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.alarm-page{padding:16px}.alarm-controls label{flex:1;min-width:130px}}
+
+/* Alarms & Events owns its heading, mode badge and time filters.
+   Keep the shared controls visible on all other dashboard pages. */
+.content:has(.alarm-page:not([hidden])) > .page-heading,
+.content:has(.alarm-page:not([hidden])) > .history-controls {
+  display: none;
+}
+
+.alarm-select{display:flex;flex-direction:column;gap:8px;min-width:145px;color:#adc3da;font-size:13px}
+.alarm-page .alarm-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;min-height:42px;padding:10px 12px;cursor:pointer;text-align:left}
+.alarm-select-trigger[aria-expanded="true"]{border-color:#10b981;box-shadow:0 0 0 2px #10b98122}
+.alarm-select-popup{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding:6px;background:#132237;color:#e5edf7;border:1px solid #3c536e;border-radius:10px;box-shadow:0 14px 32px #0008;font:13px Arial,sans-serif;scrollbar-width:thin;scrollbar-color:#486078 #132237}
+.alarm-select-popup:focus{outline:2px solid #10b981;outline-offset:2px}
+.alarm-select-option{display:flex;align-items:center;justify-content:space-between;min-height:36px;padding:0 10px;border-radius:6px;cursor:pointer;box-sizing:border-box}
+.alarm-select-option[data-active="true"]{background:#253b54}
+.alarm-select-option[aria-selected="true"]{color:#5ee2bf;background:#0d3b38;font-weight:600}
+@media(max-width:650px){.alarm-select{flex:1;min-width:130px}}
+
+/* Shared historical hour/minute controls */
+.history-toolbar > .alarm-select {min-width:80px;flex:0 0 80px;font-size:12px}
+.history-toolbar .alarm-select-trigger {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;box-sizing:border-box;padding:10px 12px;border:1px solid #466078;border-radius:7px;background:#132237;color:#edf4ff;font:inherit;cursor:pointer}
+.history-toolbar .alarm-select-trigger:focus-visible {outline:2px solid #36c9b5;outline-offset:3px}
+
+.alarm-search{display:flex;align-items:center;gap:8px;flex:1;min-width:220px}
+.alarm-search input{width:100%;min-width:0;flex:1}
+.alarm-search button{flex-shrink:0}
+.alarm-page .alarm-empty button{margin-left:12px}
+#alarm-search-help{font-size:12px;margin:10px 0;color:#9db4cb}

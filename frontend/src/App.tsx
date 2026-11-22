@@ -1,3 +1,5 @@
+import AlarmSelect from './AlarmSelect';
+import AlarmsEvents from './AlarmsEvents';
 import LiveTrends from './LiveTrends';
 import { useLiveFleet } from './useLiveFleet';
 import { useEffect, useState } from 'react';
@@ -313,9 +315,7 @@ export default function App() {
                 ? `Historical · ${unit.sourceTime}`
                 : unit.issue ?? 'Data tidak tersedia';
         }
-        return unit.acquisitionActive
-            ? 'Data simulasi tersedia'
-            : 'Data simulasi tidak tersedia';
+        return 'Data tidak tersedia';
     }
     function parametersFor(unit: FleetUnit): DynamicParameter[] {
         if (historicalMode) {
@@ -511,25 +511,12 @@ export default function App() {
             }}/>
                 </label>
 
-                <label>
-                  Jam
-                  <select className="history-select" value={time.slice(0, 2)} onChange={(event) => setTime(`${event.target.value}:${time.slice(3, 5)}`)}>
-                    {Array.from({ length: 24 }, (_, index) => {
-                const hour = String(index).padStart(2, '0');
-                return <option key={hour}>{hour}</option>;
-            })}
-                  </select>
-                </label>
-
-                <label>
-                  Menit
-                  <select className="history-select" value={time.slice(3, 5)} onChange={(event) => setTime(`${time.slice(0, 2)}:${event.target.value}`)}>
-                    {Array.from({ length: 60 }, (_, index) => {
-                const minute = String(index).padStart(2, '0');
-                return <option key={minute}>{minute}</option>;
-            })}
-                  </select>
-                </label>
+                <AlarmSelect label="Jam" value={time.slice(0, 2)}
+                  options={Array.from({length:24},(_,i)=>({value:String(i).padStart(2,'0'),label:String(i).padStart(2,'0')}))}
+                  onChange={hour=>setTime(`${hour}:${time.slice(3,5)}`)} />
+                <AlarmSelect label="Menit" value={time.slice(3, 5)}
+                  options={Array.from({length:60},(_,i)=>({value:String(i).padStart(2,'0'),label:String(i).padStart(2,'0')}))}
+                  onChange={minute=>setTime(`${time.slice(0,2)}:${minute}`)} />
 
                 <button type="button" className="secondary-button" disabled={historyBusy} onClick={refreshAllHistory}>
                   {historyBusy ? 'Memuat…' : 'Muat ulang data'}
@@ -786,7 +773,7 @@ export default function App() {
                                 ? 'Nilai tidak tersedia'
                                 : historicalMode
                                     ? 'Data historis · nilai dari file sumber'
-                                    : mode === 'live' ? 'Data Live · waktu pengukuran sumber' : 'Data simulasi'}
+                                    : 'Data Live · waktu pengukuran sumber'}
                                 </span>
                               </div>
 
@@ -820,7 +807,7 @@ export default function App() {
                 setTrendTag('');
             }} onDetail={() => setActiveMenu(menus[1])}/>))}
 
-          {activeMenu === menus[3] && ((<EmptyPanel title="Data alarm belum tersedia" message="Sinyal Trip dan ambang batas setiap parameter belum dihubungkan ke halaman ini."/>))}
+          <AlarmsEvents units={compressors} mode={mode} visible={activeMenu === menus[3]} loading={historicalMode && history.loading} error={historicalMode ? history.error : ''} onTrend={openTrends} day={day} time={time} onDay={setDay} onTime={setTime} onRefresh={refreshAllHistory}/>
 
           {activeMenu === menus[4] && (<HistoricalData onImported={() => {
                 setMode('historical');
