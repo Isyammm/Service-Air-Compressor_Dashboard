@@ -1,3 +1,4 @@
+import { excelReference } from './centacExcelReference'
 type Pair = readonly [number, number]
 type ThreePairs = readonly [Pair, Pair, Pair]
 type OilTemperature = readonly [number, number, number, number]
@@ -742,6 +743,10 @@ export function evaluateParameterAlarm(parameter: Parameter) {
     text = 'Nilai tidak tersedia'
   }
 
+  const referenceTag = parameter.tag.trim().toUpperCase()
+  const suffix = referenceTag.replace(/^U-SAC\d+-/, '').replace(/-AI(?:-MS)?$/, '')
+  const referenceKey = TAG_LIMIT_KEYS[referenceTag] ?? identifyParameter(suffix) ?? identifyParameter(parameter.label)
+  details.push(...excelReference(parameter.tag, referenceKey))
   details.push(`Kondisi: ${text}`)
   details.push(
     'Evaluasi nilai sampel; bukan konfirmasi status operasi mesin.',

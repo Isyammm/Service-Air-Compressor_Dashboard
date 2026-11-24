@@ -22,7 +22,9 @@
     "mysql2": "^3.24.6",
     "swagger-ui-express": "^5.0.1"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { createSharedSnapshot } from './sharedSnapshot.js'
 export function staleAfterMs(value = process.env.STALE_AFTER_SECONDS) {
   const seconds = Number(value ?? 15)
   if (!Number.isFinite(seconds) || seconds < 1 || seconds > 3600) throw new Error('STALE_AFTER_SECONDS harus 1–3600')
@@ -56,16 +57,22 @@ export function validateSnapshot(data, now = Date.now()) {
   }
   return { units, system }
 }
+const sharedSnapshot = createSharedSnapshot()
 export async function liveSnapshot(_req, res) {
   res.set('Cache-Control', 'no-store')
   if (!process.env.LIVE_SOURCE_URL) return res.status(503).json({configured:false,message:'Sumber Live belum dikonfigurasi'})
   try {
-    const url = new URL(process.env.LIVE_SOURCE_URL)
-    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported source')
-    const headers = process.env.LIVE_SOURCE_TOKEN ? {Authorization: `Bearer ${process.env.LIVE_SOURCE_TOKEN}`} : {}
-    const response = await fetch(url, {headers, signal: AbortSignal.timeout(5000), redirect:'error'})
-    if (!response.ok) throw new Error('Source unavailable')
-    res.json({...validateSnapshot(await response.json()), staleAfterMs:staleAfterMs()})
+    const expiry = staleAfterMs()
+    const key = JSON.stringify([process.env.LIVE_SOURCE_URL, process.env.LIVE_SOURCE_TOKEN, expiry])
+    const snapshot = await sharedSnapshot(key, async () => {
+      const url = new URL(process.env.LIVE_SOURCE_URL)
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported source')
+      const headers = process.env.LIVE_SOURCE_TOKEN ? {Authorization: `Bearer ${process.env.LIVE_SOURCE_TOKEN}`} : {}
+      const response = await fetch(url, {headers, signal: AbortSignal.timeout(5000), redirect:'error'})
+      if (!response.ok) throw new Error('Source unavailable')
+      return {...validateSnapshot(await response.json()), staleAfterMs:expiry}
+    })
+    res.json(snapshot)
   } catch {
     res.status(502).json({message:'Sumber Live tidak dapat dibaca atau format data belum sesuai'})
   }
